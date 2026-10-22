@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/latest"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/latest/download/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
 </p>
 
 <p align="center"><code>brew install simkinselgazar-rgb/tap/go-pray</code></p>
