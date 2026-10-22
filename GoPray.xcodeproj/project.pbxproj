@@ -1,0 +1,648 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1C00EE67408ADCB3083CD9BA /* fonts in Resources */ = {isa = PBXBuildFile; fileRef = CD081C5A94641FA51E27FBC9 /* fonts */; };
+		650397AC2164DD03042B6FFA /* scenes in Resources */ = {isa = PBXBuildFile; fileRef = 6D89F8767899B55CE00E6FDE /* scenes */; };
+		B55F0A016F8A158FAAC57385 /* Adhan in Frameworks */ = {isa = PBXBuildFile; productRef = 5BD000BB7952FABBDC2C0F75 /* Adhan */; };
+		EBC4D3C5E19624A68796B9AA /* athan in Resources */ = {isa = PBXBuildFile; fileRef = 7D1018435B08C7BA84B25DD7 /* athan */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		2B521C3638DBB0C72B54CF95 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = BB27DC24D8DC9B123B3097DD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A0C10300EA488C2C455C1559;
+			remoteInfo = GoPray;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		6D89F8767899B55CE00E6FDE /* scenes */ = {isa = PBXFileReference; lastKnownFileType = folder; name = scenes; path = GoPray/Resources/scenes; sourceTree = SOURCE_ROOT; };
+		7D1018435B08C7BA84B25DD7 /* athan */ = {isa = PBXFileReference; lastKnownFileType = folder; name = athan; path = GoPray/Resources/athan; sourceTree = SOURCE_ROOT; };
+		8A4A68FF44DD22675BAA70FD /* GoPrayTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GoPrayTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBF4E0DEE748584799042F59 /* GoPray.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GoPray.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CD081C5A94641FA51E27FBC9 /* fonts */ = {isa = PBXFileReference; lastKnownFileType = folder; name = fonts; path = GoPray/Resources/fonts; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		B62F4C39A917979836B3F0D2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				Launch/com.ahmedelgazar.gopray.agent.plist,
+				Resources/athan/fajr,
+				"Resources/athan/fajr/C-egypt-cairo-mahmoudeya-sheikhhamed-fajr.mp3",
+				Resources/athan/shia,
+				Resources/athan/shia/Aghati.mp3,
+				Resources/athan/shia/Ghalwash.mp3,
+				"Resources/athan/shia/Kazem-Zadeh.mp3",
+				"Resources/athan/shia/Moazzen-Zadeh.mp3",
+				"Resources/athan/shia/Mohammad-Zadeh.mp3",
+				Resources/athan/shia/Rezaeian.mp3,
+				"Resources/athan/shia/Rowhani-Nejad.mp3",
+				Resources/athan/shia/Salimi.mp3,
+				Resources/athan/shia/Sharif.mp3,
+				Resources/athan/shia/Sobhdel.mp3,
+				"Resources/athan/shia/Tasvieh-Chi.mp3",
+				Resources/athan/shia/Tookhi.mp3,
+				Resources/athan/sunni,
+				"Resources/athan/sunni/Abdul-Basit.mp3",
+				"Resources/athan/sunni/Abdul-Ghaffar.mp3",
+				"Resources/athan/sunni/Abdul-Hakam.mp3",
+				"Resources/athan/sunni/Adhan-Alaqsa.mp3",
+				"Resources/athan/sunni/Adhan-Egypt.mp3",
+				"Resources/athan/sunni/Adhan-Halab.mp3",
+				"Resources/athan/sunni/Adhan-Madinah.mp3",
+				"Resources/athan/sunni/Adhan-Makkah.mp3",
+				"Resources/athan/sunni/Al-Hussaini.mp3",
+				"Resources/athan/sunni/Bakir-Bash.mp3",
+				Resources/athan/sunni/Hafez.mp3,
+				"Resources/athan/sunni/Hafiz-Murad.mp3",
+				Resources/athan/sunni/Minshawi.mp3,
+				Resources/athan/sunni/Naghshbandi.mp3,
+				Resources/athan/sunni/Saber.mp3,
+				"Resources/athan/sunni/Sharif-Doman.mp3",
+				"Resources/fonts/Amiri-Regular.ttf",
+				"Resources/fonts/CormorantGaramond-VF.ttf",
+				"Resources/fonts/OFL-Amiri.txt",
+				"Resources/fonts/OFL-CormorantGaramond.txt",
+				Resources/scenes/MANIFEST.sha256,
+				Resources/scenes/asr.js,
+				Resources/scenes/bridge.js,
+				Resources/scenes/dhuhr.js,
+				Resources/scenes/fajr.js,
+				Resources/scenes/fonts,
+				"Resources/scenes/fonts/Amiri-Regular.woff",
+				"Resources/scenes/fonts/CormorantGaramond-VF.woff",
+				"Resources/scenes/fonts/OFL-Amiri.txt",
+				"Resources/scenes/fonts/OFL-CormorantGaramond.txt",
+				Resources/scenes/isha.js,
+				Resources/scenes/maghrib.js,
+				Resources/scenes/shield.css,
+				Resources/scenes/shield.html,
+				Resources/scenes/styles.css,
+				Resources/scenes/ui.js,
+				Resources/scenes/watercolor.js,
+			);
+			target = A0C10300EA488C2C455C1559 /* GoPray */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		590F328DE8EAEB00D130F0E6 /* GoPray */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				B62F4C39A917979836B3F0D2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */,
+			);
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = GoPray;
+			sourceTree = "<group>";
+		};
+		EAFA7925C2184463370D6D77 /* GoPrayTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			explicitFileTypes = {
+			};
+			explicitFolders = (
+			);
+			path = GoPrayTests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		87795BF84546DCEEDF43DF95 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B55F0A016F8A158FAAC57385 /* Adhan in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		5E2BFEB55A77E2A939205976 /* GoPray */ = {
+			isa = PBXGroup;
+			children = (
+				845AAAD1C5A4FC7B714EAEE3 /* Resources */,
+			);
+			path = GoPray;
+			sourceTree = "<group>";
+		};
+		71F5682709DCC48C9EA4BABB = {
+			isa = PBXGroup;
+			children = (
+				590F328DE8EAEB00D130F0E6 /* GoPray */,
+				5E2BFEB55A77E2A939205976 /* GoPray */,
+				EAFA7925C2184463370D6D77 /* GoPrayTests */,
+				9E31CAA6435CAB8BD693656D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		845AAAD1C5A4FC7B714EAEE3 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				7D1018435B08C7BA84B25DD7 /* athan */,
+				CD081C5A94641FA51E27FBC9 /* fonts */,
+				6D89F8767899B55CE00E6FDE /* scenes */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		9E31CAA6435CAB8BD693656D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				CBF4E0DEE748584799042F59 /* GoPray.app */,
+				8A4A68FF44DD22675BAA70FD /* GoPrayTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		0EB9DC1F89CF86378C5687B3 /* GoPrayTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 713ECDB7C41B6A1C8E4AAD6D /* Build configuration list for PBXNativeTarget "GoPrayTests" */;
+			buildPhases = (
+				4CEB4D869C168D0AC8C744C5 /* Sources */,
+				F2CD2CFE8AACBCA29B67741C /* Resources */,
+				9F9C7BFBEF92D5E307301438 /* Copy test fixtures */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				66B1FBDAA307FEF744B15782 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				EAFA7925C2184463370D6D77 /* GoPrayTests */,
+			);
+			name = GoPrayTests;
+			packageProductDependencies = (
+			);
+			productName = GoPrayTests;
+			productReference = 8A4A68FF44DD22675BAA70FD /* GoPrayTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		A0C10300EA488C2C455C1559 /* GoPray */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A35AEC3E9B235ACA1CE97A4 /* Build configuration list for PBXNativeTarget "GoPray" */;
+			buildPhases = (
+				8F77431071A11D8FA95BD155 /* Guards */,
+				6173D5F9F32E60501313A60C /* Check scene manifest */,
+				CE1FA0A864629DFBECB22E0C /* Sources */,
+				29314C3DC2D58E4BDBE75BEB /* Resources */,
+				87795BF84546DCEEDF43DF95 /* Frameworks */,
+				1C6BA2A1FC2E16EB9D320747 /* Install launch agent plist */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				590F328DE8EAEB00D130F0E6 /* GoPray */,
+			);
+			name = GoPray;
+			packageProductDependencies = (
+				5BD000BB7952FABBDC2C0F75 /* Adhan */,
+			);
+			productName = GoPray;
+			productReference = CBF4E0DEE748584799042F59 /* GoPray.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		BB27DC24D8DC9B123B3097DD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					0EB9DC1F89CF86378C5687B3 = {
+						ProvisioningStyle = Manual;
+					};
+					A0C10300EA488C2C455C1559 = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = D8CB3532653BFDD211F78144 /* Build configuration list for PBXProject "GoPray" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 71F5682709DCC48C9EA4BABB;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				9D4A845C4A275CCC34502121 /* XCRemoteSwiftPackageReference "adhan-swift" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9E31CAA6435CAB8BD693656D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A0C10300EA488C2C455C1559 /* GoPray */,
+				0EB9DC1F89CF86378C5687B3 /* GoPrayTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		29314C3DC2D58E4BDBE75BEB /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EBC4D3C5E19624A68796B9AA /* athan in Resources */,
+				1C00EE67408ADCB3083CD9BA /* fonts in Resources */,
+				650397AC2164DD03042B6FFA /* scenes in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F2CD2CFE8AACBCA29B67741C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		1C6BA2A1FC2E16EB9D320747 /* Install launch agent plist */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Install launch agent plist";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# SMAppService.agent(plistName:) reads Contents/Library/LaunchAgents.\nsrc=\"${SRCROOT}/GoPray/Launch/com.ahmedelgazar.gopray.agent.plist\"\nif [ -f \"$src\" ]; then\n  dst=\"${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Library/LaunchAgents\"\n  mkdir -p \"$dst\"\n  cp \"$src\" \"$dst/\"\nfi\n";
+		};
+		6173D5F9F32E60501313A60C /* Check scene manifest */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Check scene manifest";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ -x \"${SRCROOT}/scripts/check-manifest.sh\" ]; then\n  \"${SRCROOT}/scripts/check-manifest.sh\"\nfi\n";
+		};
+		8F77431071A11D8FA95BD155 /* Guards */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = Guards;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/scripts/guard.sh\"\n";
+		};
+		9F9C7BFBEF92D5E307301438 /* Copy test fixtures */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy test fixtures";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Tests read fixtures from their own bundle, never from the source tree at run time\n# (the source tree lives under ~/Documents, which macOS privacy may refuse to a test host).\ndst=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Fixtures\"\nrm -rf \"$dst\"\nmkdir -p \"$dst\"\ncp \"${SRCROOT}/scripts/check-manifest.sh\" \"$dst/\"\nfor d in \"${SRCROOT}/../design/scenes\" \"${SRCROOT}/../../design/scenes\"; do\n  if [ -d \"$d\" ]; then mkdir -p \"$dst/design-scenes\" && cp -R \"$d/.\" \"$dst/design-scenes/\"; break; fi\ndone\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		4CEB4D869C168D0AC8C744C5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE1FA0A864629DFBECB22E0C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		66B1FBDAA307FEF744B15782 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A0C10300EA488C2C455C1559 /* GoPray */;
+			targetProxy = 2B521C3638DBB0C72B54CF95 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		4BBBAAEA05488B9712A5F693 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		610EEE9425FBC83D81BBAD3C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GoPray/GoPray.entitlements;
+				CODE_SIGN_IDENTITY = "Developer ID Application";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				DEVELOPMENT_TEAM = 3BB4JMG8GR;
+				ENABLE_HARDENED_RUNTIME = YES;
+				INFOPLIST_FILE = GoPray/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray;
+				PRODUCT_MODULE_NAME = GoPray;
+				PRODUCT_NAME = "Go Pray";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		82D0608F650DAF620DA83D99 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		9351DE440C153B1D42739E05 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Go Pray.app/Contents/MacOS/Go Pray";
+			};
+			name = Release;
+		};
+		C5043E9C7F17562722A57630 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = GoPray/GoPray.entitlements;
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 2;
+				ENABLE_HARDENED_RUNTIME = NO;
+				INFOPLIST_FILE = GoPray/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray;
+				PRODUCT_MODULE_NAME = GoPray;
+				PRODUCT_NAME = "Go Pray";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		CC3729249ECE7DB6DEE486E1 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				CODE_SIGN_STYLE = Manual;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Go Pray.app/Contents/MacOS/Go Pray";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		713ECDB7C41B6A1C8E4AAD6D /* Build configuration list for PBXNativeTarget "GoPrayTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC3729249ECE7DB6DEE486E1 /* Debug */,
+				9351DE440C153B1D42739E05 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8A35AEC3E9B235ACA1CE97A4 /* Build configuration list for PBXNativeTarget "GoPray" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C5043E9C7F17562722A57630 /* Debug */,
+				610EEE9425FBC83D81BBAD3C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D8CB3532653BFDD211F78144 /* Build configuration list for PBXProject "GoPray" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4BBBAAEA05488B9712A5F693 /* Debug */,
+				82D0608F650DAF620DA83D99 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		9D4A845C4A275CCC34502121 /* XCRemoteSwiftPackageReference "adhan-swift" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/batoulapps/adhan-swift.git";
+			requirement = {
+				kind = revision;
+				revision = a6fa2deee80c5abb0b9ad04466f8ab12b53144e7;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		5BD000BB7952FABBDC2C0F75 /* Adhan */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9D4A845C4A275CCC34502121 /* XCRemoteSwiftPackageReference "adhan-swift" */;
+			productName = Adhan;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = BB27DC24D8DC9B123B3097DD /* Project object */;
+}

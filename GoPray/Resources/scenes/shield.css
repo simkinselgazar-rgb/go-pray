@@ -1,0 +1,30 @@
+/* Go Pray — app-only styles for shield.html. The approved styles.css is untouched.
+   Nothing here changes how a scene looks; it removes web-page habits (selection, drag,
+   the preview backdrop) and lays out the small coding-apps notice. */
+html, body { background: transparent; }
+html, body, * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+}
+body { cursor: default; overscroll-behavior: none; }
+
+/* coding-apps notice, 420 x 520: the scene is a band across the top (no text on the art), everything
+   else sits on the prayer's ground colour. Colours are the approved per-prayer tokens (>= 6.4:1 on ground). */
+html.layout-notice { --fs-name: 26px; --ring-size: 84px; }
+html.layout-notice .scene {
+  inset: 0 0 auto 0; bottom: auto; height: 160px;
+  -webkit-mask-image: linear-gradient(#000 78%, transparent);
+  mask-image: linear-gradient(#000 78%, transparent);
+}
+html.layout-notice .block {
+  top: 176px; bottom: auto; left: 0; right: 0; width: auto; transform: none;
+  padding: 0 32px; box-sizing: border-box;
+}
+html.layout-notice .rule { display: none; }
+html.layout-notice .copy { margin-top: 12px; font-size: 15px; line-height: 20px; }
+html.layout-notice .ring { margin-top: 12px; }
+html.layout-notice .prayed { margin-top: 14px; width: 220px; }
+html.layout-notice .silence { margin-top: 8px; }
+html.layout-notice .accept { left: 50%; top: 62%; bottom: auto; transform: translate(-50%, -50%); }

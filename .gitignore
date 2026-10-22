@@ -1,0 +1,11 @@
+.DS_Store
+build/
+DerivedData/
+.build/
+*.xcuserstate
+xcuserdata/
+spike/evidence/
+spike/build/
+spike-media/build/
+spike-media/*.mp4
+spike-media/*.wav

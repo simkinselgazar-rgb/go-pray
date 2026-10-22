@@ -1,0 +1,129 @@
+# Source of GoPray.xcodeproj. PM-owned. Regenerate with: xcodegen generate
+# GoPray/ and GoPrayTests/ are file-system-synchronized groups, so lanes add
+# files without touching project.pbxproj. Resources/scenes, Resources/athan and
+# Resources/fonts are folder references (copied as directories, not flattened).
+name: GoPray
+options:
+  bundleIdPrefix: com.ahmedelgazar
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  Adhan:
+    url: https://github.com/batoulapps/adhan-swift.git
+    revision: a6fa2deee80c5abb0b9ad04466f8ab12b53144e7   # tag 1.5.0, pinned by commit
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    DEAD_CODE_STRIPPING: YES
+targets:
+  GoPray:
+    type: application
+    platform: macOS
+    sources:
+      - path: GoPray
+        type: syncedFolder
+        excludes:
+          - "Resources/scenes"
+          - "Resources/scenes/**"
+          - "Resources/athan"
+          - "Resources/athan/**"
+          - "Resources/fonts"
+          - "Resources/fonts/**"
+          - "Launch/*.plist"
+      - path: GoPray/Resources/scenes
+        type: folder
+        buildPhase: resources
+      - path: GoPray/Resources/athan
+        type: folder
+        buildPhase: resources
+      # Native UI fonts (TTF; ATSApplicationFontsPath = fonts). The scene WOFFs stay in scenes/fonts.
+      - path: GoPray/Resources/fonts
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - package: Adhan
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ahmedelgazar.gopray
+        PRODUCT_NAME: Go Pray
+        PRODUCT_MODULE_NAME: GoPray
+        INFOPLIST_FILE: GoPray/Info.plist
+        CODE_SIGN_ENTITLEMENTS: GoPray/GoPray.entitlements
+        MARKETING_VERSION: "0.1.1"
+        CURRENT_PROJECT_VERSION: "2"
+        COMBINE_HIDPI_IMAGES: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      configs:
+        Debug:
+          CODE_SIGN_IDENTITY: "-"
+          CODE_SIGN_STYLE: Manual
+          ENABLE_HARDENED_RUNTIME: NO
+        Release:
+          CODE_SIGN_IDENTITY: "Developer ID Application"
+          CODE_SIGN_STYLE: Manual
+          DEVELOPMENT_TEAM: 3BB4JMG8GR
+          ENABLE_HARDENED_RUNTIME: YES
+    preBuildScripts:
+      - name: Guards
+        script: |
+          "${SRCROOT}/scripts/guard.sh"
+        basedOnDependencyAnalysis: false
+      - name: Check scene manifest
+        script: |
+          if [ -x "${SRCROOT}/scripts/check-manifest.sh" ]; then
+            "${SRCROOT}/scripts/check-manifest.sh"
+          fi
+        basedOnDependencyAnalysis: false
+    postBuildScripts:
+      - name: Install launch agent plist
+        script: |
+          # SMAppService.agent(plistName:) reads Contents/Library/LaunchAgents.
+          src="${SRCROOT}/GoPray/Launch/com.ahmedelgazar.gopray.agent.plist"
+          if [ -f "$src" ]; then
+            dst="${TARGET_BUILD_DIR}/${CONTENTS_FOLDER_PATH}/Library/LaunchAgents"
+            mkdir -p "$dst"
+            cp "$src" "$dst/"
+          fi
+        basedOnDependencyAnalysis: false
+  GoPrayTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - path: GoPrayTests
+        type: syncedFolder
+    dependencies:
+      - target: GoPray
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ahmedelgazar.gopray.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_IDENTITY: "-"
+        CODE_SIGN_STYLE: Manual
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Go Pray.app/Contents/MacOS/Go Pray"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    postBuildScripts:
+      - name: Copy test fixtures
+        script: |
+          # Tests read fixtures from their own bundle, never from the source tree at run time
+          # (the source tree lives under ~/Documents, which macOS privacy may refuse to a test host).
+          dst="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Fixtures"
+          rm -rf "$dst"
+          mkdir -p "$dst"
+          cp "${SRCROOT}/scripts/check-manifest.sh" "$dst/"
+          for d in "${SRCROOT}/../design/scenes" "${SRCROOT}/../../design/scenes"; do
+            if [ -d "$d" ]; then mkdir -p "$dst/design-scenes" && cp -R "$d/." "$dst/design-scenes/"; break; fi
+          done
+        basedOnDependencyAnalysis: false
+schemes:
+  GoPray:
+    build:
+      targets:
+        GoPray: all
+        GoPrayTests: [test]
+    test:
+      targets:
+        - GoPrayTests
+      gatherCoverageData: false

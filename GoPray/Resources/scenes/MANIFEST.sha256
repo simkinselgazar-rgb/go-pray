@@ -1,0 +1,19 @@
+# Go Pray scene manifest. Written by scripts/sync-assets.sh, checked by scripts/check-manifest.sh.
+# Format: <sha256>  <path relative to Resources/scenes>. Any file in scenes/ not listed here fails the build.
+# --- approved by Ahmed, copied byte-for-byte from design/scenes (do not edit) ---
+a36b8f160539684ba6ad3507d4dd2fcf34ef6c790dcea35c08691441b9adb54f  asr.js
+bf94131eb268996b7079df5fc5811a340c208e2bf27a0c1f423e6ea4367dbb3c  dhuhr.js
+0788fe8fca4c3e9806f3f006d623febf06d8ef23cd502c528c76396e203b8327  fajr.js
+0fbdabab09b4c5877715cba9eb318a0bca1aaea9a3065e4a0386783c608ffc98  isha.js
+8ebdb5dfe74586212f40c365016e96ab1705a184ab77bfb3910744bd5190909f  maghrib.js
+f7aed6b03cc51330c501de1d6e7ba8ff4a555e1326a76aa4a35100bf63a8ad04  styles.css
+4daef1f866934d8a1c8fee0ad4ee450abc2357dd01175f16c78801041bf3cf28  ui.js
+9e2315f9bcdac9401659ffe7dbbfd38308e5f5279279c817fe24a459c2354f77  watercolor.js
+5f6ab0c653e9ad9c37770150b639ed3f5c2c557a0b3b6e36e000993857660caf  fonts/CormorantGaramond-VF.woff
+b2ca342a5b44b4db72da22df753dd5e62c7eb58c901641d0cfa637b927b40894  fonts/Amiri-Regular.woff
+72de68e5954f4fdd24702292ef5a32f003ca960ec9330dc86e5eefb5dffb9b22  fonts/OFL-Amiri.txt
+60700d351cac4650c51f3f9db318d2a420f8b45052dba2715eb5fec41f0f6956  fonts/OFL-CormorantGaramond.txt
+# --- app-only (edit, then re-run sync-assets.sh) ---
+1e6edc0277a2b036f34170fd9454c9ca502e38d90b65b9ccc4f130ec134902ee  shield.html
+af549b8417d73ab365a92e5a6356519952ff8b8b32930729cfcbba08dcc82f26  bridge.js
+5e61ec7cf61352d99207a77a85953c9ad5d581cb904f02a0e44d5bd62bc1ec5b  shield.css

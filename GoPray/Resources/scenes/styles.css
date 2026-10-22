@@ -1,0 +1,403 @@
+/* Go Pray — block screen + prayer scenes.
+   ONE token block below. Scene JS reads the per-prayer tokens with getComputedStyle,
+   so every colour in the art and the UI comes from here. (s) = sampled from the
+   prayer's inspiration picture, (d) = derived from a sample, (e) = eyeballed. */
+
+@font-face {
+  font-family: 'Cormorant Garamond';
+  src: url('fonts/CormorantGaramond-VF.woff') format('woff');
+  font-weight: 300 700;
+  font-display: block;
+}
+@font-face {
+  font-family: 'Amiri';
+  src: url('fonts/Amiri-Regular.woff') format('woff');
+  font-weight: 400;
+  font-display: block;
+}
+
+:root {
+  /* shared */
+  --nabawi: #3e6b3a;          /* primary action ("I prayed") — Nabawi dome green, same in every prayer */
+  --on-nabawi: #f4eee2;       /* text on the button */
+  --preview-bg: #161518;      /* preview page only (what is "behind" the shield) */
+  --preview-ink: #e9e4da;
+
+  --font-display: 'Cormorant Garamond', 'Cormorant', 'Iowan Old Style', Georgia, serif;
+  --font-arabic: 'Amiri', 'Geeza Pro', serif;
+  --font-ui: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  --font-num: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+
+  --fs-name: clamp(34px, 5vh, 58px);
+  --fs-ar: calc(var(--fs-name) * 0.9);
+  --fs-copy: 15px;
+  --lh-copy: 20px;
+  --fs-btn: 15px;
+  --fs-small: 12px;
+  --ring-size: clamp(120px, 19vh, 188px);
+
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px; --sp-7: 48px; --sp-8: 64px;
+  --radius-btn: 10px;
+  --radius-chip: 8px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-ink: cubic-bezier(0.45, 0.05, 0.25, 1);
+  --dur-ink: 1500ms;
+}
+
+/* ---------- per-prayer palettes ---------- */
+[data-prayer='fajr'] {
+  --ground: #0e0705;   /* (s) room shadow */
+  --sky-1: #fefcf5;    /* (s) hottest light in the window */
+  --sky-2: #f5d4a0;    /* (s) window glow */
+  --sky-3: #cfa371;    /* (s) haze outside */
+  --stone-1: #73492d;  /* (s) lit pillar */
+  --stone-2: #513223;  /* (s) wall */
+  --stone-3: #2a1a11;  /* (d) wall in shadow */
+  --deep: #0e0705;     /* (s) near-black */
+  --accent-1: #976742; /* (s) light shaft */
+  --accent-2: #c3926b; /* (s) lit floor */
+  --glow: #f5d4a0;     /* (s) */
+  --ink: #120a06;      /* (d) */
+  --text: #f2e4cc;     /* (d) from window glow */
+  --text-soft: #c9b293;/* (d) */
+  --ring: #f5d4a0;     /* (s) */
+}
+[data-prayer='dhuhr'] {
+  --ground: #f0eee7;   /* (d) paper, from the style reference, a touch cooler */
+  --sky-1: #44687e;    /* (s) sky, top */
+  --sky-2: #829ba3;    /* (s) sky, middle */
+  --sky-3: #a4adac;    /* (s) sky, near horizon */
+  --stone-1: #fadaab;  /* (s) minaret, lit */
+  --stone-2: #edbc82;  /* (s) minaret, mid */
+  --stone-3: #a9825a;  /* (d) minaret, shade */
+  --deep: #2b3a24;     /* (d) from the drum shadow #435737 */
+  --accent-1: #58683d; /* (s) Nabawi dome */
+  --accent-2: #9b774f; /* (s) brass finial */
+  --glow: #f0cd9f;     /* (s) */
+  --ink: #1f2a2e;      /* (d) */
+  --text: #17232a;     /* (d) */
+  --text-soft: #34444b;/* (d) */
+  --ring: #2e4d60;     /* (d) sky-1 darkened */
+}
+[data-prayer='asr'] {
+  --ground: #f1ece4;   /* (d) marble, light */
+  --sky-1: #dee9f3;    /* (s) */
+  --sky-2: #d8dfe6;    /* (s) */
+  --sky-3: #e8dccb;    /* (d) warm haze over the walls */
+  --stone-1: #eee9e2;  /* (d) marble lit */
+  --stone-2: #d6d1ce;  /* (s) marble */
+  --stone-3: #a8a19a;  /* (s) marble shade */
+  --deep: #4a3521;     /* (s) */
+  --accent-1: #9c7f5c; /* (s) gold capitals */
+  --accent-2: #447e6f; /* (s) green dome */
+  --glow: #f6d9a2;     /* (e) lantern light (the samples clip to white glass) */
+  --ink: #2d1c0e;      /* (s) */
+  --text: #2d1c0e;     /* (s) */
+  --text-soft: #5c4835;/* (s) */
+  --ring: #7a5c22;     /* (d) gold, deepened for contrast */
+}
+[data-prayer='maghrib'] {
+  --ground: #f8de9c;   /* (s) */
+  --sky-1: #83847f;    /* (s) dusk, top */
+  --sky-2: #e4b86b;    /* (s) amber */
+  --sky-3: #fef4b9;    /* (s) near the sun */
+  --stone-1: #ddac5f;  /* (s) far haze */
+  --stone-2: #9c6a33;  /* (s) mid silhouettes */
+  --stone-3: #543f24;  /* (s) near silhouettes */
+  --deep: #1f1808;     /* (s) foreground roofs */
+  --accent-1: #a36e30; /* (s) gold dome */
+  --accent-2: #fefdee; /* (s) sun */
+  --glow: #f8de9c;     /* (s) */
+  --ink: #241c0d;      /* (s) */
+  --text: #241c0d;     /* (s) */
+  --text-soft: #4b3719;/* (d) */
+  --ring: #5c3a12;     /* (d) amber deepened */
+}
+[data-prayer='isha'] {
+  --ground: #08080f;   /* (s) night */
+  --sky-1: #08080f;    /* (s) */
+  --sky-2: #16151c;    /* (s) far city */
+  --sky-3: #1a191a;    /* (s) tower body */
+  --stone-1: #d3d3d4;  /* (s) white light, mataf */
+  --stone-2: #9d9b9c;  /* (s) lit stone */
+  --stone-3: #43423e;  /* (s) stone in shadow */
+  --deep: #12141a;     /* (s) Kaaba */
+  --accent-1: #b8935a; /* (e) Kaaba band gold (thin; the quantize averages it away) */
+  --accent-2: #4b8e72; /* (s) clock-tower green */
+  --glow: #e2b97a;     /* (e) arcade light */
+  --ink: #e9e6df;      /* (d) night linework is pale */
+  --text: #ede9e1;     /* (d) */
+  --text-soft: #b9b4aa;/* (d) */
+  --ring: #62a38e;     /* (s) clock-tower green, lit */
+}
+
+/* ---------- base ---------- */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--preview-bg);
+  color: var(--preview-ink);
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+}
+::selection { background: color-mix(in srgb, var(--nabawi) 40%, transparent); color: inherit; }
+
+/* ---------- shield ---------- */
+.shield {
+  position: fixed;
+  inset: 0;
+  background: var(--ground);
+  color: var(--text);
+  transition: opacity 1000ms var(--ease-in-out);
+}
+.shield.is-gone { opacity: 0; pointer-events: none; }
+
+.scene { position: absolute; inset: 0; overflow: hidden; background: var(--ground); }
+.scene > canvas, .scene > svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+
+/* ink draws in like a pen, nearest the focal point first */
+.scene-ink path { stroke-dasharray: 1 1; stroke-dashoffset: 1; }
+.scene.is-inked .scene-ink path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--dur-ink) var(--ease-ink) calc(var(--d) * 1300ms);
+}
+.scene[data-state='still'] .scene-ink path,
+.scene[data-state='lived'] .scene-ink path { stroke-dashoffset: 0; transition: none; }
+
+/* the live layer and light layers arrive after the paint has soaked in */
+.scene-live { opacity: 0; transition: opacity 1600ms var(--ease-out); }
+.scene[data-state='lived'] .scene-live,
+.scene[data-state='still'] .scene-live { opacity: 1; }
+
+/* Fajr: the first light grows across the whole block */
+.layer-light { mix-blend-mode: screen; opacity: 0.38; }
+.scene[data-state='lived'] .layer-light { animation: dawn var(--block-ms) linear forwards; }
+@keyframes dawn { 0% { opacity: 0.38; } 100% { opacity: 1; } }
+
+/* Asr: lantern glow breathes (two sets, out of phase), soft shadows creep as the sun moves */
+.layer-lanterns-a, .layer-lanterns-b { mix-blend-mode: multiply; opacity: 0.45; }
+.scene[data-state='lived'] .layer-lanterns-a { animation: breathe 7s ease-in-out infinite alternate; }
+.scene[data-state='lived'] .layer-lanterns-b { animation: breathe 7s ease-in-out -3.5s infinite alternate; }
+@keyframes breathe { from { opacity: 0.45; } to { opacity: 1; } }
+.scene[data-state='lived'] .layer-shadows { animation: sun-moves 90s ease-in-out infinite alternate; }
+@keyframes sun-moves { from { transform: skewX(0deg); } to { transform: skewX(7deg); } }
+
+/* Maghrib: the sun sinks almost imperceptibly across the block */
+.layer-sun { mix-blend-mode: screen; }
+.scene[data-state='lived'] .layer-sun { animation: sink var(--block-ms) linear forwards; }
+@keyframes sink { from { transform: translateY(0); } to { transform: translateY(3.2vh); } }
+
+/* Isha: minaret and arcade lights breathe very slightly */
+.layer-lights { mix-blend-mode: screen; opacity: 0.72; }
+.scene[data-state='lived'] .layer-lights { animation: breathe-soft 9s ease-in-out infinite alternate; }
+@keyframes breathe-soft { from { opacity: 0.72; } to { opacity: 1; } }
+
+/* Reduce Motion: no bloom, no loops; a 200ms crossfade instead */
+.scene[data-state='still'] { animation: crossfade 200ms ease-out both; }
+.scene[data-state='still'] > canvas { animation: none !important; transition: none !important; }
+.scene[data-state='still'] .layer-light,
+.scene[data-state='still'] .layer-lanterns-a,
+.scene[data-state='still'] .layer-lanterns-b,
+.scene[data-state='still'] .layer-shadows,
+.scene[data-state='still'] .layer-sun,
+.scene[data-state='still'] .layer-lights { opacity: 0.85; }
+@keyframes crossfade { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- block UI ---------- */
+.block {
+  position: absolute;
+  top: 50%;
+  left: 21vw;
+  width: min(440px, 36vw);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.name { margin: 0; font-weight: 400; display: flex; flex-direction: column; align-items: center; }
+.name-latin {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: var(--fs-name);
+  line-height: 1;
+  letter-spacing: 0.4em;
+  margin-right: -0.4em; /* tracking adds space after the last letter; pull it back so it centres */
+  text-transform: uppercase;
+}
+.name-ar {
+  font-family: var(--font-arabic);
+  font-size: var(--fs-ar);
+  line-height: 1.4;
+  letter-spacing: 0; /* never track Arabic */
+  margin-top: var(--sp-2);
+}
+.rule { width: 40px; height: 1px; background: color-mix(in srgb, var(--text) 60%, transparent); margin-top: var(--sp-4); }
+.copy {
+  margin: var(--sp-5) 0 0;
+  font-size: var(--fs-copy);
+  line-height: var(--lh-copy);
+  color: var(--text-soft);
+  text-wrap: balance;
+}
+
+.ring { position: relative; width: var(--ring-size); height: var(--ring-size); margin-top: var(--sp-6); }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.ring-track { stroke: color-mix(in srgb, var(--text) 22%, transparent); }
+.ring-fill { stroke: var(--ring); transition: stroke-dashoffset 1000ms linear; }
+.ring-time {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-weight: 300;
+  font-size: calc(var(--ring-size) * 0.26);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+  color: var(--text);
+}
+
+.btn {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+
+.prayed {
+  position: relative;
+  width: 240px;
+  height: 44px;
+  margin-top: var(--sp-6);
+  border-radius: var(--radius-btn);
+  overflow: hidden;
+  font-family: var(--font-ui);
+  font-size: var(--fs-btn);
+  font-weight: 500;
+  color: var(--text-soft);
+  background: color-mix(in srgb, var(--text) 7%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 26%, transparent);
+  transition: transform 160ms var(--ease-out), color 300ms ease;
+}
+.prayed:disabled { cursor: default; }
+.prayed .soak {
+  position: absolute;
+  inset: 0;
+  background: var(--nabawi);
+  clip-path: inset(0 100% 0 0);
+  transition: clip-path 400ms var(--ease-ink);
+}
+.prayed .label { position: relative; display: inline-block; }
+.prayed .lock { position: absolute; right: calc(100% + var(--sp-2)); top: 50%; width: 13px; height: 13px; margin-top: -6.5px; opacity: 0.8; transition: opacity 200ms ease; }
+.prayed.is-ready { color: var(--on-nabawi); box-shadow: none; }
+.prayed.is-ready .soak { clip-path: inset(0 0 0 0); }
+.prayed.is-ready .lock { opacity: 0; }
+.prayed.is-ready:active { transform: scale(0.97); }
+
+.silence {
+  margin-top: var(--sp-3);
+  height: 32px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--radius-btn);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-ui);
+  font-size: var(--fs-small);
+  color: var(--text-soft);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 20%, transparent);
+  transition: opacity 600ms ease, transform 160ms var(--ease-out);
+}
+.silence svg { width: 14px; height: 14px; }
+.silence:active { transform: scale(0.97); }
+.silence.is-quiet { opacity: 0; pointer-events: none; }
+
+/* the UI arrives after the scene has bloomed */
+.block > * { opacity: 0; transform: translateY(6px); transition: opacity 500ms var(--ease-out), transform 700ms var(--ease-out); }
+.block.is-in > * { opacity: 1; transform: none; }
+.block.is-in > :nth-child(2) { transition-delay: 60ms; }
+.block.is-in > :nth-child(3) { transition-delay: 120ms; }
+.block.is-in > :nth-child(4) { transition-delay: 180ms; }
+.block.is-in > :nth-child(5) { transition-delay: 240ms; }
+.block.is-in > :nth-child(6) { transition-delay: 300ms; }
+.block.is-in > .silence.is-quiet { opacity: 0; }
+.block.is-leaving > * { opacity: 0; transition: opacity 200ms ease-out; transition-delay: 0ms; }
+
+.accept {
+  position: absolute;
+  left: 21vw;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  margin: 0;
+  width: max-content;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: italic;
+  font-size: calc(var(--fs-name) * 0.72);
+  color: var(--text);
+  opacity: 0;
+  transition: opacity 250ms var(--ease-out);
+  pointer-events: none;
+}
+.accept.is-on { opacity: 1; }
+
+/* Reduce Motion: opacity only, no movement */
+.reduce .block > *, .reduce .block.is-in > * { transform: none; transition: opacity 200ms ease-out; transition-delay: 0ms; }
+.reduce .prayed .soak { transition: none; }
+.reduce .ring-fill { transition: none; }
+.reduce .shield { transition: opacity 150ms ease-out; }
+.reduce .scene-live, .reduce .scene > canvas { transition: none; }
+
+@media (max-aspect-ratio: 5/4) {
+  .block, .accept { left: 50%; top: auto; bottom: 6vh; transform: translateX(-50%); }
+}
+
+/* ---------- preview chrome (not part of the app) ---------- */
+.preview {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--preview-bg) 82%, transparent);
+  color: var(--preview-ink);
+  font-size: 12px;
+  z-index: 10;
+  opacity: 0.55;
+  transition: opacity 200ms ease;
+}
+.preview:hover, .preview:focus-within { opacity: 1; }
+.preview .chip {
+  appearance: none;
+  border: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: var(--radius-chip);
+  background: transparent;
+}
+.preview .chip kbd { font: inherit; opacity: 0.5; margin-right: 4px; }
+.preview .chip[aria-pressed='true'] { background: color-mix(in srgb, var(--preview-ink) 16%, transparent); }
+.preview .chip:focus-visible { outline: 2px solid var(--preview-ink); outline-offset: 1px; }
+.preview .sep { width: 1px; height: 18px; background: color-mix(in srgb, var(--preview-ink) 20%, transparent); }
+.preview[hidden] { display: none; }
+
+.after {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: color-mix(in srgb, var(--preview-ink) 60%, transparent);
+  font-size: 13px;
+}
