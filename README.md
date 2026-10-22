@@ -26,6 +26,12 @@
 > [!NOTE]
 > **Beta.** Family and friends are testing Go Pray now. If something goes wrong, please [open an issue](https://github.com/simkinselgazar-rgb/go-pray/issues).
 
+### A note from the creator
+
+> I made this app because I have been having a hard time keeping up with my prayers because of how busy I have been with building and working a corporate job. I hope that it can help you on your journey of getting closer with Allah as it is helping me. May Allah guide us all, and good luck on your journey, Brother/Sister.
+>
+> — Ahmed
+
 <p align="center">
   <img src="docs/hero.jpg" alt="The five prayer scenes, painted in watercolor: Fajr, a window at first light; Dhuhr, the green dome under a blue sky; Asr, a marble arcade; Maghrib, a gold dome at sunset; Isha, the Kaaba at night">
 </p>
