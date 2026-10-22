@@ -2,7 +2,7 @@
   <img src="docs/logo.png" width="128" height="128" alt="Go Pray app icon: a painted arch with the evening sky behind a mosque">
 </p>
 
-<h1 align="center">Go Pray</h1>
+<h1 align="center">GO PRAY</h1>
 
 <h3 align="center" dir="rtl">قوم صلّي</h3>
 <p align="center"><em>Oum Saly — "get up and pray", the way Egyptians say it</em></p>
