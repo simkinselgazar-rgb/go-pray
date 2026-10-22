@@ -4,6 +4,9 @@
 
 <h1 align="center">Go Pray</h1>
 
+<h3 align="center" dir="rtl">قوم صلّي</h3>
+<p align="center"><em>Oum Saly — "get up and pray", the way Egyptians say it</em></p>
+
 <p align="center">
   A small Mac menu bar app that stops your work at every Athan<br>
   and lets you back after a real break.
