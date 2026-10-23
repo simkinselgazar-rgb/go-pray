@@ -97,6 +97,42 @@ public class MacFixtureTests
         finally { Directory.Delete(dir, true); }
     }
 
+    // Real files from Ahmed's Mac (PM, 2026-10-23; city/coords replaced).
+
+    [Fact]
+    public void realMacSettingsLoadAndRoundTrip()
+    {
+        var mac = File.ReadAllBytes(Fixture("mac-real-settings.json"));
+        var s = SettingsRules.DecodeSettings(mac);
+        s.Validate();
+        Assert.Equal(0.6663495f, s.AthanVolume);                  // a Swift Float, written with 7 digits
+        Assert.Equal(Voice.Sunni("Abdul-Basit"), s.Voice);
+        Assert.Null(s.PausedUntil);
+        AssertSameJson(mac, s.Encode());
+        Assert.Contains("\"athanVolume\": 0.6663495", Encoding.UTF8.GetString(s.Encode()));
+        var dir = Path.Combine(Path.GetTempPath(), "gopray-fixture-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            Directory.CreateDirectory(dir);
+            File.Copy(Fixture("mac-real-settings.json"), Path.Combine(dir, "settings.json"));
+            var store = new SettingsStore(dir);
+            Assert.False(store.LoadedFromCorruptFile);
+            Assert.Equal(s, store.Settings);
+        }
+        finally { Directory.Delete(dir, true); }
+    }
+
+    [Fact]
+    public void realMacIdleStateLoadsAndRoundTrips()
+    {
+        var mac = File.ReadAllBytes(Fixture("mac-real-state-idle.json"));
+        var s = BlockStateFile.Decode(mac);
+        Assert.Null(s.CurrentBlock);
+        Assert.Equal(Prayer.Asr, s.LastConfirmed?.Prayer);
+        Assert.Equal(Prayer.Dhuhr, s.LastDropped?.Prayer);
+        AssertSameJson(mac, s.Encode());
+    }
+
     [Fact]
     public void everyDefaultIsWrittenTheMacWay()
     {
