@@ -1,0 +1,17 @@
+{
+  "athanVolume" : 0.6663495,
+  "city" : "Toronto, Ontario",
+  "latitude" : 43.6532,
+  "launchAtLogin" : false,
+  "lockMinutes" : 10,
+  "longitude" : -79.3832,
+  "madhab" : 1,
+  "method" : "northAmerica",
+  "mode" : "wholeScreen",
+  "setupComplete" : true,
+  "voice" : {
+    "sunni" : {
+      "_0" : "Abdul-Basit"
+    }
+  }
+}

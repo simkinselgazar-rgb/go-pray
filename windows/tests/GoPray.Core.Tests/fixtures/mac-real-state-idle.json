@@ -1,0 +1,15 @@
+{
+  "block" : null,
+  "lastConfirmed" : {
+    "athanAt" : "2026-10-23T19:52:00.000Z",
+    "prayer" : "asr"
+  },
+  "lastDropped" : {
+    "athanAt" : "2026-10-22T16:54:00.000Z",
+    "prayer" : "dhuhr"
+  },
+  "launches" : [
+
+  ],
+  "schemaVersion" : 1
+}
