@@ -1,0 +1,18 @@
+{
+  "athanVolume" : 0.15,
+  "city" : "Montréal, Québec",
+  "latitude" : 45.50884,
+  "launchAtLogin" : true,
+  "lockMinutes" : 20,
+  "longitude" : -73.58781,
+  "madhab" : 2,
+  "method" : "northAmerica",
+  "mode" : "codingApps",
+  "pausedUntil" : "4001-01-01T00:00:00Z",
+  "setupComplete" : true,
+  "voice" : {
+    "shia" : {
+      "_0" : "Salimi"
+    }
+  }
+}

@@ -1,0 +1,3 @@
+<Project>
+  <!-- The Phase 0 spike is throwaway code: it does not inherit windows/Directory.Build.props. -->
+</Project>

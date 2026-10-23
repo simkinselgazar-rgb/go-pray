@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The law: gate, state, scheduler, settings, launch decisions. NO WPF, WinForms or WinRT here
+       (guard.ps1 rule 12), so every rule is testable on any machine. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GoPray.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="GoPray.Core.Tests" />
+  </ItemGroup>
+</Project>
