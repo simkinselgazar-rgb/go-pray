@@ -31,9 +31,19 @@
 
 ### A note from the creator
 
+<img src="docs/creator.png" width="96" height="96" align="left" alt="Ahmed Elgazar, the creator of Go Pray">
+
 > I made this app because I have been having a hard time keeping up with my prayers because of how busy I have been with building and working a corporate job. I hope that it can help you on your journey of getting closer with Allah as it is helping me. May Allah guide us all, and good luck on your journey, Brother/Sister.
 >
-> — Ahmed
+> — Ahmed Elgazar
+
+<br clear="left">
+
+<p align="center">
+  <a href="https://www.instagram.com/ahmedelgazarai/"><img src="https://img.shields.io/badge/Instagram-@ahmedelgazarai-E4405F?logo=instagram&logoColor=white" alt="Instagram @ahmedelgazarai"></a>
+  <a href="https://www.tiktok.com/@ahmedelgazarai"><img src="https://img.shields.io/badge/TikTok-@ahmedelgazarai-000000?logo=tiktok&logoColor=white" alt="TikTok @ahmedelgazarai"></a>
+  <a href="https://www.youtube.com/@ahmedelgazarai"><img src="https://img.shields.io/badge/YouTube-@ahmedelgazarai-FF0000?logo=youtube&logoColor=white" alt="YouTube @ahmedelgazarai"></a>
+</p>
 
 <p align="center">
   <img src="docs/hero.jpg" alt="The five prayer scenes, painted in watercolor: Fajr, a window at first light; Dhuhr, the green dome under a blue sky; Asr, a marble arcade; Maghrib, a gold dome at sunset; Isha, the Kaaba at night">
