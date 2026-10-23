@@ -32,6 +32,7 @@ internal sealed class AppHost
     [DllImport("user32.dll")] static extern bool PostMessage(IntPtr hwnd, uint msg, IntPtr w, IntPtr l);
     static readonly IntPtr HWND_BROADCAST = new(0xffff);
     static readonly uint ShowMessage = RegisterWindowMessage(LaunchDecision.ShowMessageName);
+    static readonly uint QuitMessage = RegisterWindowMessage(LaunchDecision.QuitMessageName);
 
     // MARK: entry
 
@@ -41,7 +42,15 @@ internal sealed class AppHost
         StartLog(dir);
         if (args.Contains("--uninstall-task"))
         {
+            // The uninstaller: remove the task, ask a running copy to quit (it does only between prayers), and wait up
+            // to 10 s for it to go so its files can be removed.
             try { new LogonTask().Unregister(); } catch (Exception e) { CoreLog.Error("uninstall-task: " + e.Message); }
+            PostMessage(HWND_BROADCAST, QuitMessage, IntPtr.Zero, IntPtr.Zero);
+            for (int i = 0; i < 40; i++)
+            {
+                using (var probe = new InstanceMutex()) { if (probe.Owned != false) break; }
+                System.Threading.Thread.Sleep(250);
+            }
             return 0;
         }
         using var mutex = new InstanceMutex();
@@ -169,6 +178,12 @@ internal sealed class AppHost
         _messages.AddHook((IntPtr h, int msg, IntPtr w, IntPtr l, ref bool handled) =>
         {
             if ((uint)msg == ShowMessage) { ShowRequested(); handled = true; }
+            else if ((uint)msg == QuitMessage)
+            {
+                handled = true;
+                if (Gate.ShouldAllowQuit()) { CoreLog.Notice("quit: asked by the uninstaller"); Shutdown(); }
+                else CoreLog.Notice("uninstaller asked to quit during a block: staying until the block ends");
+            }
             return IntPtr.Zero;
         });
     }
@@ -229,6 +244,11 @@ internal sealed class AppHost
         try { if (_logonId != null) _launch.RecordUserQuit(_logonId, Gate); }
         catch (Exception e) { CoreLog.Error("quit flag not written: " + e.Message); }
         CoreLog.Notice("quit by the person");
+        Shutdown();
+    }
+
+    void Shutdown()
+    {
         Scheduler.Stop();
         Audio.Stop();
         _tray?.Dispose();

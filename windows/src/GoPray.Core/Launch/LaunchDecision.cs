@@ -58,6 +58,10 @@ public static class LaunchDecision
     public const string MutexName = @"Local\GoPray.Instance";
     /// <summary>RegisterWindowMessage name the loser broadcasts so the holder opens Setup/Settings.</summary>
     public const string ShowMessageName = "GoPray.Show";
+    /// <summary>Broadcast by `--uninstall-task` (the uninstaller): the holder quits, but only when no block is up
+    /// (gate.ShouldAllowQuit). During a block it stays, so the uninstaller cannot remove the running exe until the
+    /// block ends: uninstalling is never a quicker way out than the block itself.</summary>
+    public const string QuitMessageName = "GoPray.Quit";
 
     public static LaunchKind KindOf(string[] args) =>
         Array.IndexOf(args, TickArgument) >= 0 ? LaunchKind.Tick : LaunchKind.ByHand;
