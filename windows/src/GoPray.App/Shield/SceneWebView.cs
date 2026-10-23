@@ -218,6 +218,15 @@ internal sealed class SceneWebView
         return _core.Environment.GetProcessInfos().Where(p => p.Kind == CoreWebView2ProcessKind.Renderer).Select(p => p.ProcessId).ToArray();
     }
 
+    /// <summary>A PNG of the whole view as painted (scene stills for the popover and Setup headers).</summary>
+    internal async Task<bool> CapturePng(Stream into)
+    {
+        await _ready;
+        if (_core == null) return false;
+        try { await _core.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, into); return true; }
+        catch (Exception) { return false; }
+    }
+
 #if DEBUG
     /// <summary>Debug harness only: crash this view's renderer (CDP Page.crash) to show the fallback live.</summary>
     internal async Task DebugCrashRenderer()

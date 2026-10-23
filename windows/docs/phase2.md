@@ -35,7 +35,7 @@ notice (`live-d`): no hook, and the foreground stayed in the person's app (Warp)
    and the CSP stops those. Shipped (both layers): 0 HTTP requests reach a local listener, over 3 runs.
    Chromium still opens a bare TCP preconnect (no request, no data) when a navigation or popup starts.
    `--dns-prefetch-disable` and the NetworkPrediction feature flags do not stop it. It is counted and
-   reported in the test, not hidden.
+   reported in the test, not hidden. **PM ruling (2026-10-23): ship both layers; the bare preconnect (no request, no data) is ACCEPTED** and belongs in the threat model.
 4. **Windows caps a window at the virtual-screen size plus borders.** ShieldWindow answers `WM_GETMINMAXINFO`
    with its monitor's size, so the bounds are exact.
 5. **Nothing had the focus after the shield closed.** A whole-screen shield now remembers the foreground

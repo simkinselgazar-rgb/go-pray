@@ -1,0 +1,6 @@
+[   0.014] === p4-sessions-before start 2026-10-23 18:06:14.080 pid=18044
+[   0.134] RequestAsync returned in 57 ms, mgr=True fg before=warp/Window Class after=warp/Window Class
+[   0.139] sessions=1
+[   0.165]   session app=SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify status=Paused canPause=False (not ours: title not logged, not touched)
+[   0.166] fg at end=warp/Window Class
+[   0.167] pause done

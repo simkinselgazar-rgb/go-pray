@@ -1,4 +1,4 @@
-<#
+﻿<#
 sync-assets.ps1 — copy the scenes byte for byte from the Mac tree into the Windows app (PLAN.md §4).
 The Mac tree (GoPray/Resources/scenes, with its MANIFEST.sha256) is the single source of truth; the
 Windows tree never holds a second copy in git (Resources/scenes is in .gitignore). Runs before every
@@ -11,12 +11,14 @@ approved bytes). A source outside git (tests, the negative control) is copied as
 
   scripts\sync-assets.ps1 [-Source <scenes dir>] [-Dest <dir>]
 #>
-param([string]$Source = '', [string]$Dest = '')
+param([string]$Source = '', [string]$Dest = '', [switch]$NoManifest, [switch]$Incremental)
+# -NoManifest: for audio and fonts (no MANIFEST.sha256; they are byte-copied from git all the same).
+# -Incremental: do not wipe the destination; rewrite a file only when its bytes differ (the 29 MP3s).
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 if (-not $Source) { $Source = Join-Path $here '..\..\GoPray\Resources\scenes' }
 if (-not $Dest) { $Dest = Join-Path $here '..\src\GoPray.App\Resources\scenes' }
-if (-not (Test-Path -LiteralPath (Join-Path $Source 'MANIFEST.sha256'))) { Write-Output "sync-assets FAIL: no MANIFEST.sha256 in $Source"; exit 1 }
+if (-not $NoManifest -and -not (Test-Path -LiteralPath (Join-Path $Source 'MANIFEST.sha256'))) { Write-Output "sync-assets FAIL: no MANIFEST.sha256 in $Source"; exit 1 }
 $Source = (Resolve-Path -LiteralPath $Source).Path
 
 function Git([string[]]$a) {
@@ -34,7 +36,7 @@ function Git([string[]]$a) {
 $top = $null
 try { $r = Git @('rev-parse', '--show-prefix'); if ($r.Code -eq 0) { $top = [Text.Encoding]::UTF8.GetString($r.Bytes).Trim() } } catch { $top = $null }
 
-if (Test-Path -LiteralPath $Dest) { Remove-Item -LiteralPath $Dest -Recurse -Force }
+if ((Test-Path -LiteralPath $Dest) -and -not $Incremental) { Remove-Item -LiteralPath $Dest -Recurse -Force }
 New-Item -ItemType Directory -Force $Dest | Out-Null
 $n = 0; $fromGit = 0
 Get-ChildItem -LiteralPath $Source -Recurse -File | ForEach-Object {
@@ -44,7 +46,11 @@ Get-ChildItem -LiteralPath $Source -Recurse -File | ForEach-Object {
     $done = $false
     if ($null -ne $top) {
         $b = Git @('cat-file', 'blob', "HEAD:$top$rel")
-        if ($b.Code -eq 0) { [IO.File]::WriteAllBytes($to, $b.Bytes); $done = $true; $fromGit++ }
+        if ($b.Code -eq 0) {
+            $same = $Incremental -and (Test-Path -LiteralPath $to) -and ((Get-Item -LiteralPath $to).Length -eq $b.Bytes.Length) -and ([Convert]::ToBase64String([Security.Cryptography.SHA256]::Create().ComputeHash([IO.File]::ReadAllBytes($to))) -eq [Convert]::ToBase64String([Security.Cryptography.SHA256]::Create().ComputeHash($b.Bytes)))
+            if (-not $same) { [IO.File]::WriteAllBytes($to, $b.Bytes) }
+            $done = $true; $fromGit++
+        }
     }
     if (-not $done) { Copy-Item -LiteralPath $_.FullName -Destination $to }
     $n++

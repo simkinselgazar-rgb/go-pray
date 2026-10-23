@@ -12,11 +12,14 @@
     <AssemblyName>GoPray</AssemblyName>
     <RootNamespace>GoPray.App</RootNamespace>
     <StartupObject>GoPray.App.Program</StartupObject>
+    <ApplicationIcon>..\..\assets\GoPray.ico</ApplicationIcon>
+    <Version>0.1.0</Version>
     <!-- Where the scenes come from. Overridable only to prove the manifest check (one changed byte → build fails). -->
     <GoPrayScenesSource Condition="'$(GoPrayScenesSource)' == ''">$(MSBuildThisFileDirectory)..\..\..\GoPray\Resources\scenes</GoPrayScenesSource>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GoPray.Core\GoPray.Core.csproj" />
@@ -30,6 +33,17 @@
     <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\check-manifest.ps1&quot; -Dir &quot;$(MSBuildThisFileDirectory)Resources\scenes&quot;" />
     <ItemGroup>
       <Content Include="Resources\scenes\**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The 29 Athan files and the two OFL fonts, byte-copied from the Mac tree (no second copy in git), and the tray icons. -->
+  <Target Name="GoPraySyncAudioFonts" BeforeTargets="BeforeBuild">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\sync-assets.ps1&quot; -NoManifest -Incremental -Source &quot;$(MSBuildThisFileDirectory)..\..\..\GoPray\Resources\athan&quot; -Dest &quot;$(MSBuildThisFileDirectory)Resources\athan&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\sync-assets.ps1&quot; -NoManifest -Incremental -Source &quot;$(MSBuildThisFileDirectory)..\..\..\GoPray\Resources\fonts&quot; -Dest &quot;$(MSBuildThisFileDirectory)Resources\fonts&quot;" />
+    <ItemGroup>
+      <Content Include="Resources\athan\**;Resources\fonts\**" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="..\..\assets\tray-black-for-light-taskbar.ico" Link="Resources\icons\tray-black-for-light-taskbar.ico" CopyToOutputDirectory="PreserveNewest" />
+      <Content Include="..\..\assets\tray-white-for-dark-taskbar.ico" Link="Resources\icons\tray-white-for-dark-taskbar.ico" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
   </Target>
 </Project>

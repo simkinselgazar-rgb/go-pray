@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -191,6 +191,34 @@ static class ShieldMode
             Log.W($"reassert try {i} SetForegroundWindow={ok} fgNow={(Ours.Contains(N.GetForegroundWindow()) ? "OURS" : N.Describe(N.GetForegroundWindow()))}");
             await Task.Delay(100);
         }
+    }
+}
+
+// A test window for the Phase 4 hider check: shows, then at --restore-at restores and activates itself (like a
+// person clicking it in the taskbar) and logs whether it ends up minimised again. Exits at --seconds (max 15).
+static class TestWindowMode
+{
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr h);
+    [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int c);
+    public static void Run(string[] a)
+    {
+        Log.Open("p4-test-window");
+        int secs = Math.Clamp(Program.IntArg(a, "--seconds", 12), 2, 15);
+        var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
+        var w = new Window { Title = "GOPRAY-SPIKE-TESTWINDOW", Width = 360, Height = 200, Left = 120, Top = 120 };
+        w.Show();
+        var h = new WindowInteropHelper(w).Handle;
+        var poll = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) };
+        bool last = false;
+        poll.Tick += (_, _) => { bool i = IsIconic(h); if (i != last) { Log.W($"iconic -> {i}"); last = i; } };
+        poll.Start();
+        var restore = new DispatcherTimer { Interval = TimeSpan.FromSeconds(Program.IntArg(a, "--restore-at", 6)) };
+        restore.Tick += (_, _) => { restore.Stop(); ShowWindow(h, 9); w.Activate(); N.SetForegroundWindow(h); Log.W("restored and activated myself (a person clicking me)"); };
+        restore.Start();
+        var end = new DispatcherTimer { Interval = TimeSpan.FromSeconds(secs) };
+        end.Tick += (_, _) => { Log.W($"end iconic={IsIconic(h)}"); app.Shutdown(); };
+        end.Start();
+        app.Run();
     }
 }
 

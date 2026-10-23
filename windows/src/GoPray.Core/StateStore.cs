@@ -24,8 +24,16 @@ public sealed class StateStore(string directory)
     public string FilePath => Path.Combine(Directory, "state.json");
 
     /// <summary><c>%LOCALAPPDATA%\GoPray\</c> — the one place the app keeps state, settings and launch.json.</summary>
-    public static string DefaultDirectory() =>
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GoPray");
+    public static string DefaultDirectory()
+    {
+#if DEBUG
+        // DEBUG only (the Mac's TestHost folder): tests and screenshot runs never touch the real files.
+        // Release has no switch: no environment variable can move state.json.
+        var o = Environment.GetEnvironmentVariable("GOPRAY_DEBUG_STATE_DIR");
+        if (!string.IsNullOrEmpty(o)) return o;
+#endif
+        return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "GoPray");
+    }
 
     public LoadResult Load()
     {

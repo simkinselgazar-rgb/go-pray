@@ -25,6 +25,7 @@ static class Program
             case "shield": ShieldMode.Run(a); break;
             case "keys": KeysMode.Run(a); break;
             case "steal": StealMode.Run(a); break;
+            case "testwindow": TestWindowMode.Run(a); break;
             case "media-target": MediaMode.Target(a); break;
             case "media-pause": MediaMode.Pause(a); break;
             case "idle": Idle(a); break;

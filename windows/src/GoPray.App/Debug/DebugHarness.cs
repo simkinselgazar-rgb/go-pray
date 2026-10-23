@@ -73,9 +73,17 @@ internal static class DebugHarness
 
         var app = new Application { ShutdownMode = ShutdownMode.OnExplicitShutdown };
         var stateDir = Path.Combine(Path.GetTempPath(), "gopray-debug-state-" + Guid.NewGuid().ToString("N"));
-        var settings = SettingsRules.Defaults with { Mode = mode, SetupComplete = true, ReduceMotion = false };
-        var shield = new ShieldController { Log = m => Log("shield: " + m) };
-        var gate = new BlockGate(new SystemClock(), new StateStore(stateDir), new NoSchedule(), shield, new NoAudio(), new NoHider(), () => settings);
+        float volume = (float)Math.Clamp(Num(a, "--volume", 0.05), 0, 0.2);          // safety: quiet
+        var settings = SettingsRules.Defaults with { Mode = mode, SetupComplete = true, ReduceMotion = false, AthanVolume = volume };
+        // Its own WebView2 profile in temp: a harness run never writes to %LOCALAPPDATA%\GoPray.
+        var shield = new ShieldController(new ShieldOptions { Web = new SceneWebView.Options { UserDataFolder = Path.Combine(Path.GetTempPath(), "gopray-debug-webview2") } }) { Log = m => Log("shield: " + m) };
+        IAthanPlaying audio = Array.IndexOf(a, "--real-audio") >= 0 ? new Audio.AthanPlayer() : new NoAudio();
+        var hideOnly = Arg(a, "--hide-only", "");
+        IAppHiding hider = hideOnly.Length > 0
+            ? new Blocker.AppHider(isListed: p => hideOnly.Split(",").Any(x => string.Equals(x, p, StringComparison.OrdinalIgnoreCase)))
+            : new NoHider();
+        var gate = new BlockGate(new SystemClock(), new StateStore(stateDir), new NoSchedule(), shield, audio, hider, () => settings);
+        hider.OnReHide += n => Log($"hider: re-minimised {n}");
         CoreLog.Sink = m => Log("core: " + m);
         Log($"start prayer={prayer} mode={mode} lock={lockS}s cap={cap}s monitors={Displays.Live().Count} hookBefore={KeyboardGuard.IsInstalled}");
 
@@ -130,6 +138,8 @@ internal static class DebugHarness
                 w.Tick += (_, _) => { if (main?.Fallback != null) { w.Stop(); Log($"FALLBACK shown {(sw.Elapsed - t0).TotalMilliseconds:0} ms after the crash; reasons={string.Join(";", shield.FallbackReasons)} fallbackTime={main.FallbackView?.TimeText}"); } };
                 w.Start();
             });
+            At(Num(a, "--silence-at", 0), () => { gate.RequestSilence(); Log($"silence: audio playing={audio.IsPlaying} phase={gate.Phase.Kind} (the block goes on)"); });
+            At(1.5, () => Log($"audio after 1.5 s: playing={audio.IsPlaying} remainingMs={audio.RemainingMs()}" + (audio is Audio.AthanPlayer ap ? $" position={ap.Position:0.00}s" : "")));
             At(Num(a, "--click-at", 0), () => Click("after lock"));
             At(cap, () =>
             {

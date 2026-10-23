@@ -157,7 +157,7 @@ if ($Strict -and $tpn -ne 1) { Bad "-Strict: TryPauseAsync appears $tpn times (w
 OnlyIn '\bShowWindow(Async)?\s*\(' $AppHider
 
 # 10. Debug entry points stay behind #if DEBUG.
-$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_HIDE_ONLY|--debug-|\bDebugMenu\b|\bDebugHarness\b|DebugCrashRenderer' | Where-Object { -not $_.Debug })
+$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_|--debug-|\bDebugMenu\b|\bDebugHarness\b|DebugCrashRenderer' | Where-Object { -not $_.Debug })
 if ($dbg.Count) { Bad "debug entry point outside #if DEBUG: $(Show $dbg)" }
 
 # 12. Core is pure: no Windows UI, registry or native calls (so the law is testable anywhere).
@@ -182,7 +182,7 @@ if ($Release) {
         # name source files such as DebugHarness.cs; release.ps1 must not ship them (Phase 5).
         $bins = @(Get-ChildItem -LiteralPath $Release -Recurse -File | Where-Object { $_.Name -like 'GoPray*' -and @('.exe', '.dll') -contains $_.Extension.ToLowerInvariant() })
         if (-not $bins.Count) { Bad "-Release: no GoPray*.exe/.dll in $Release" }
-        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_HIDE_ONLY', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash')
+        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash', 'Trigger Athan now')
         foreach ($b in $bins) {
             $bytes = [IO.File]::ReadAllBytes($b.FullName)
             $ascii = [Text.Encoding]::ASCII.GetString($bytes)

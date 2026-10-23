@@ -1,0 +1,17 @@
+[  0.085] start prayer=Dhuhr mode=CodingApps lock=8s cap=14s monitors=1 hookBefore=False
+[  0.104] core: notice block start dhuhr
+[  0.410] core: notice media pause: asked 1 session(s) to pause
+[  0.629] triggered: phase=Locked slots=1 layouts=Notice hook=False
+[  0.740] phase=Locked presenting=True ready=False fallback=False hook=False reasserts=0/0
+[  0.976] phase=Locked presenting=True ready=True fallback=False hook=False reasserts=0/0
+[  1.619] foreground after 1 s: warp
+[  2.123] audio after 1.5 s: playing=True remainingMs=199193 position=1.95s
+[  3.141] silence: audio playing=False phase=Locked (the block goes on)
+[  4.109] hider: re-minimised GoPraySpike
+[  8.153] phase=CanConfirm presenting=True ready=True fallback=False hook=False reasserts=0/0
+[ 10.139] core: notice block confirmed dhuhr
+[ 10.141] phase=Leaving presenting=True ready=True fallback=False hook=False reasserts=0/0
+[ 10.141] after lock: page click "clicked"
+[ 11.377] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[ 11.379] IDLE: block ended; hook=False keyEventsSeen=0 lastConfirmed=Dhuhr
+[ 12.366] exit 0 after linger 1s; hook=False keyEventsSeen=0 (unchanged = no hook after the block)
