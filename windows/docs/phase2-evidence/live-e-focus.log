@@ -1,0 +1,15 @@
+[  0.079] start prayer=Maghrib mode=WholeScreen lock=4s cap=12s monitors=1 hookBefore=False
+[  0.098] core: notice block start maghrib
+[  0.333] shield: keyboard guard installed=True
+[  0.345] triggered: phase=Locked slots=1 layouts=Full hook=True
+[  0.453] phase=Locked presenting=True ready=False fallback=False hook=True reasserts=0/0
+[  0.666] phase=Locked presenting=True ready=True fallback=False hook=True reasserts=0/0
+[  1.336] foreground after 1 s: GoPray (us)
+[  4.100] phase=CanConfirm presenting=True ready=True fallback=False hook=True reasserts=0/0
+[  5.372] core: notice block confirmed maghrib
+[  5.374] shield: keyboard guard removed
+[  5.380] after lock: page click "clicked"
+[  5.419] phase=Leaving presenting=True ready=True fallback=False hook=False reasserts=0/0
+[  6.736] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[  6.737] IDLE: block ended; hook=False keyEventsSeen=0 lastConfirmed=Maghrib
+[  8.241] exit 0 after linger 1.5s; hook=False keyEventsSeen=0 (unchanged = no hook after the block)

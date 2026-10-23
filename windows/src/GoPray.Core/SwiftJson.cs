@@ -20,10 +20,10 @@ namespace GoPray.Core;
 
 internal static partial class SwiftJson
 {
-    public static Utf8JsonWriter Writer(out ArrayBufferWriter<byte> buffer)
+    public static Utf8JsonWriter Writer(out ArrayBufferWriter<byte> buffer, bool indented = true, JavaScriptEncoder? encoder = null)
     {
         buffer = new ArrayBufferWriter<byte>();
-        return new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = true, Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+        return new Utf8JsonWriter(buffer, new JsonWriterOptions { Indented = indented, Encoder = encoder ?? JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
     }
 
     public static string FormatDate(DateTime d, bool fractional)

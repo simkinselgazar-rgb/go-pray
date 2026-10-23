@@ -1,0 +1,13 @@
+[  0.077] start prayer=Asr mode=CodingApps lock=5s cap=12s monitors=1 hookBefore=False
+[  0.096] core: notice block start asr
+[  0.300] triggered: phase=Locked slots=1 layouts=Notice hook=False
+[  0.419] phase=Locked presenting=True ready=False fallback=False hook=False reasserts=0/0
+[  0.637] phase=Locked presenting=True ready=True fallback=False hook=False reasserts=0/0
+[  1.303] foreground after 1 s: warp
+[  5.142] phase=CanConfirm presenting=True ready=True fallback=False hook=False reasserts=0/0
+[  6.832] core: notice block confirmed asr
+[  6.839] after lock: page click "clicked"
+[  6.903] phase=Leaving presenting=True ready=True fallback=False hook=False reasserts=0/0
+[  8.118] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[  8.120] IDLE: block ended; hook=False keyEventsSeen=0 lastConfirmed=Asr
+[  9.122] exit 0 after linger 1s; hook=False keyEventsSeen=0 (unchanged = no hook after the block)

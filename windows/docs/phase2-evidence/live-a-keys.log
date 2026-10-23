@@ -1,0 +1,66 @@
+[   0.015] === live-a-keys start 2026-10-23 17:39:01.420 pid=35376
+[   1.231] --> win
+[   1.494]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   1.644]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   1.802]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   1.961]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   2.121]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   2.283]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   2.590] --> alttab
+[   3.250]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   3.406]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   3.561]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   3.715]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   3.870]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   4.025]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   4.333] --> wintab
+[   4.675]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   4.830]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   4.986]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   5.148]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   5.302]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   5.467]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   5.780] --> ctrlesc
+[   6.139]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   6.293]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   6.459]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   6.614]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   6.771]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   6.938]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   7.251] --> ctrlshiftesc
+[   7.688]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   7.845]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   7.997]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   8.153]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   8.310]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   8.465]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   8.774] --> wind
+[   9.115]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   9.269]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   9.425]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   9.580]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   9.734]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[   9.891]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  10.201] --> altf4
+[  10.543]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  10.697]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  10.853]     +450ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  11.006]     +600ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  11.172]     +750ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  11.329]     +900ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  11.632] --> steal
+[  11.794]     +150ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  11.950]     +300ms fg=GoPray/HwndWrapper[GoPray;;d872c8c5-35d3-46b2-b43b-caaf26571930]
+[  12.117]     +450ms fg=GoPraySpike/HwndWrapper[GoPraySpike;;c84dbfdf-3ec6-45b3-9810-fb8944a52a50]
+[  12.279]     +600ms fg=GoPraySpike/HwndWrapper[GoPraySpike;;c84dbfdf-3ec6-45b3-9810-fb8944a52a50]
+[  12.433]     +750ms fg=GoPraySpike/HwndWrapper[GoPraySpike;;c84dbfdf-3ec6-45b3-9810-fb8944a52a50]
+[  12.599]     +900ms fg=GoPraySpike/HwndWrapper[GoPraySpike;;c84dbfdf-3ec6-45b3-9810-fb8944a52a50]
+[  12.913] --> wait2500
+[  15.427] --> f24
+[  15.682]     +150ms fg=warp/Window Class
+[  15.841]     +300ms fg=warp/Window Class
+[  15.999]     +450ms fg=warp/Window Class
+[  16.158]     +600ms fg=warp/Window Class
+[  16.318]     +750ms fg=warp/Window Class
+[  16.475]     +900ms fg=warp/Window Class
+[  16.776] keys done

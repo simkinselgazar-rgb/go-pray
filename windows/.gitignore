@@ -3,3 +3,6 @@ obj/
 *.user
 .vs/
 TestResults/
+# filled by scripts/sync-assets.ps1 at build (single source: ../GoPray/Resources)
+src/GoPray.App/Resources/scenes/
+src/GoPray.App/Resources/athan/

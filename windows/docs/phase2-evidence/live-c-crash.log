@@ -1,0 +1,19 @@
+[  0.080] start prayer=Fajr mode=WholeScreen lock=8s cap=15s monitors=1 hookBefore=False
+[  0.098] core: notice block start fajr
+[  0.329] shield: keyboard guard installed=True
+[  0.342] triggered: phase=Locked slots=1 layouts=Full hook=True
+[  0.455] phase=Locked presenting=True ready=False fallback=False hook=True reasserts=0/0
+[  0.674] phase=Locked presenting=True ready=True fallback=False hook=True reasserts=0/0
+[  1.347] foreground after 1 s: GoPray (us)
+[  3.344] crash: renderer (CDP Page.crash)
+[  3.501] shield: web shield failed (processFailed:RenderProcessExited); native fallback
+[  3.589] phase=Locked presenting=True ready=True fallback=True hook=True reasserts=0/0
+[  5.347] early: fallback click
+[  8.156] phase=CanConfirm presenting=True ready=True fallback=True hook=True reasserts=0/0
+[  9.880] core: notice block confirmed fajr
+[  9.881] shield: keyboard guard removed
+[  9.884] after lock: fallback click
+[  9.921] phase=Leaving presenting=True ready=True fallback=True hook=False reasserts=0/0
+[ 10.923] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[ 10.924] IDLE: block ended; hook=False keyEventsSeen=0 lastConfirmed=Fajr
+[ 11.932] exit 0 after linger 1s; hook=False keyEventsSeen=0 (unchanged = no hook after the block)

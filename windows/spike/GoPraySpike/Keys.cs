@@ -43,7 +43,8 @@ static class KeysMode
         foreach (var s in steps)
         {
             var before = N.Describe(N.GetForegroundWindow());
-            if (!before.StartsWith("GoPraySpike"))
+            if (s.StartsWith("wait") || s == "f24") { }
+            else if (!before.StartsWith("GoPray"))
             {
                 Log.W($"STOP: foreground is {before}, not the spike shield; not injecting more keys");
                 break;
@@ -59,6 +60,8 @@ static class KeysMode
                 case "ctrlshiftesc": Chord(CTRL, SHIFT, ESC); break;
                 case "wind": Chord(WIN, D); break;
                 case "altf4": Chord(ALT, F4); break;
+                case "f24": Chord(0x87); break;                       // a key nothing uses: proves whether a hook still sees keys
+                case var w when w.StartsWith("wait"): Thread.Sleep(int.Parse(w[4..])); continue;
                 case "steal":
                     var p = Process.Start(new ProcessStartInfo(Environment.ProcessPath!, "steal") { UseShellExecute = false });
                     N.AllowSetForegroundWindow(p!.Id);

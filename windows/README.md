@@ -11,6 +11,9 @@ implementation, and `../GoPray/Resources/` (scenes, audio) is read-only input.
 | `tests/GoPray.Core.Tests/` | xUnit. The Mac's `BlockGateTests`, `LockAndPauseTests`, `SchedulerTests`, `DebugBlockTests`, `SettingsStoreTests` use the same test names. `StateStoreTests`, `MacFixtureTests` and `LaunchDecisionTests` are Windows-only. `fixtures/` holds Mac-shaped JSON. |
 | `scripts/guard.ps1` | Grep guards (translation of `scripts/guard.sh`, PLAN.md §6). `-Strict` adds the ship-time "exactly one" rules; `-Release <dir>` scans binaries for debug strings. |
 | `scripts/guard-selftest.ps1` | A negative control for every guard rule, plus `-Release` on Debug (must fail) and Release (must pass) builds. |
+| `src/GoPray.App/` | The Windows shell. Phase 2: `Shield/` (ShieldController, ShieldWindow, SceneWebView, KeyboardGuard, ForegroundWatch, NativeFallbackShield), `Debug/DebugHarness.cs` (DEBUG only). Scenes are synced from `../GoPray/Resources/scenes` at build (git blobs, manifest-checked). |
+| `tests/GoPray.App.Tests/` | Real WebView2 off-screen: bridge, lockdown (local listener), fallback, manifest, keyboard decision. |
+| `docs/` | `adhan.md` (why the prayer math is a port), `phase2.md` (shield results + live evidence). |
 | `spike/` | Phase 0 throwaway + `ANSWERS.md`. |
 
 ## Build and test

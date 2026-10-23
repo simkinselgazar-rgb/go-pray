@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The Windows shell: shield windows, WebView2, keyboard guard, (later) tray, hider, audio, autostart.
+       Publish self-contained: dotnet publish -c Release -r win-x64 with self-contained on (PLAN.md §2). -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>   <!-- LibraryImport's generated marshalling; no unsafe code is written by hand -->
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AssemblyName>GoPray</AssemblyName>
+    <RootNamespace>GoPray.App</RootNamespace>
+    <StartupObject>GoPray.App.Program</StartupObject>
+    <!-- Where the scenes come from. Overridable only to prove the manifest check (one changed byte → build fails). -->
+    <GoPrayScenesSource Condition="'$(GoPrayScenesSource)' == ''">$(MSBuildThisFileDirectory)..\..\..\GoPray\Resources\scenes</GoPrayScenesSource>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\GoPray.Core\GoPray.Core.csproj" />
+    <InternalsVisibleTo Include="GoPray.App.Tests" />
+  </ItemGroup>
+
+  <!-- sync-assets copies the scenes byte for byte from the Mac tree; check-manifest fails the build if
+       any byte differs from MANIFEST.sha256 or a file is missing or unlisted (guard rule 11). -->
+  <Target Name="GoPraySyncAndCheckScenes" BeforeTargets="BeforeBuild">
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\sync-assets.ps1&quot; -Source &quot;$(GoPrayScenesSource)&quot; -Dest &quot;$(MSBuildThisFileDirectory)Resources\scenes&quot;" />
+    <Exec Command="powershell -NoProfile -ExecutionPolicy Bypass -File &quot;$(MSBuildThisFileDirectory)..\..\scripts\check-manifest.ps1&quot; -Dir &quot;$(MSBuildThisFileDirectory)Resources\scenes&quot;" />
+    <ItemGroup>
+      <Content Include="Resources\scenes\**" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+</Project>

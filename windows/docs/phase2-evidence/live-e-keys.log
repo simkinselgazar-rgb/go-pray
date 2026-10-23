@@ -1,0 +1,10 @@
+[   0.015] === live-e-keys start 2026-10-23 17:40:47.866 pid=24672
+[   1.036] --> wait6800
+[   7.850] --> f24
+[   8.102]     +150ms fg=warp/Window Class
+[   8.258]     +300ms fg=warp/Window Class
+[   8.417]     +450ms fg=warp/Window Class
+[   8.570]     +600ms fg=warp/Window Class
+[   8.730]     +750ms fg=warp/Window Class
+[   8.889]     +900ms fg=warp/Window Class
+[   9.196] keys done

@@ -1,0 +1,16 @@
+[  0.124] start prayer=Dhuhr mode=WholeScreen lock=10s cap=15s monitors=1 hookBefore=False
+[  0.144] core: notice block start dhuhr
+[  0.428] shield: keyboard guard installed=True
+[  0.442] triggered: phase=Locked slots=1 layouts=Full hook=True
+[  0.549] phase=Locked presenting=True ready=False fallback=False hook=True reasserts=0/0
+[  0.849] phase=Locked presenting=True ready=True fallback=False hook=True reasserts=0/0
+[  1.445] foreground after 1 s: GoPray (us)
+[  2.473] early: page click "clicked"
+[ 10.168] phase=CanConfirm presenting=True ready=True fallback=False hook=True reasserts=0/0
+[ 11.476] core: notice block confirmed dhuhr
+[ 11.477] shield: keyboard guard removed
+[ 11.479] after lock: page click "clicked"
+[ 11.508] phase=Leaving presenting=True ready=True fallback=False hook=False reasserts=0/0
+[ 12.830] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[ 12.831] IDLE: block ended; hook=False keyEventsSeen=28 lastConfirmed=Dhuhr
+[ 14.834] exit 0 after linger 2s; hook=False keyEventsSeen=28 (unchanged = no hook after the block)

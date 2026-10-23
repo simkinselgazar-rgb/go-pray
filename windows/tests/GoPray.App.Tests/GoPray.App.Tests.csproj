@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>GoPray.App.Tests</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageReference Include="xunit" Version="2.9.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="3.1.4" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\GoPray.App\GoPray.App.csproj" />
+    <ProjectReference Include="..\GoPray.Core.Tests\GoPray.Core.Tests.csproj" />
+  </ItemGroup>
+  <!-- UI tests share one WebView2 environment and real windows: run them one at a time. -->
+  <ItemGroup>
+    <AssemblyAttribute Include="Xunit.CollectionBehaviorAttribute">
+      <_Parameter1>DisableTestParallelization = true</_Parameter1>
+      <_Parameter1_IsLiteral>true</_Parameter1_IsLiteral>
+    </AssemblyAttribute>
+  </ItemGroup>
+</Project>

@@ -157,7 +157,7 @@ if ($Strict -and $tpn -ne 1) { Bad "-Strict: TryPauseAsync appears $tpn times (w
 OnlyIn '\bShowWindow(Async)?\s*\(' $AppHider
 
 # 10. Debug entry points stay behind #if DEBUG.
-$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_HIDE_ONLY|--debug-seed|\bDebugMenu\b' | Where-Object { -not $_.Debug })
+$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_HIDE_ONLY|--debug-|\bDebugMenu\b|\bDebugHarness\b|DebugCrashRenderer' | Where-Object { -not $_.Debug })
 if ($dbg.Count) { Bad "debug entry point outside #if DEBUG: $(Show $dbg)" }
 
 # 12. Core is pure: no Windows UI, registry or native calls (so the law is testable anywhere).
@@ -166,15 +166,23 @@ if ($core.Count) { Bad "GoPray.Core must not use Windows UI/registry/native APIs
 $coreProj = @(Get-ChildItem -LiteralPath $Src -Recurse -File -Filter GoPray.Core.csproj -ErrorAction SilentlyContinue | Select-String -Pattern 'UseWPF|UseWindowsForms|-windows')
 if ($coreProj.Count) { Bad "GoPray.Core.csproj must target plain net10.0 (no WPF/WinForms/-windows TFM)" }
 
-# (11. check-manifest.ps1 for Resources/scenes arrives with sync-assets.ps1 in Phase 2.)
+# 11. The scenes the app ships match MANIFEST.sha256 byte for byte (the build runs it too).
+$scenes = Join-Path (Split-Path -Parent $Src) '..\GoPray\Resources\scenes'
+$appScenes = Join-Path $Src 'GoPray.App\Resources\scenes'
+if ((Test-Path -LiteralPath $appScenes) -and (Test-Path -LiteralPath (Join-Path $appScenes 'MANIFEST.sha256'))) {
+    $cm = & powershell -NoProfile -ExecutionPolicy Bypass -File (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Path) 'check-manifest.ps1') -Dir $appScenes 2>&1 | Out-String
+    if ($LASTEXITCODE -ne 0) { Bad "check-manifest: $($cm.Trim())" }
+}
 
 # 13. Release publish dir: no debug strings in any binary (ASCII or UTF-16, as .NET stores literals).
 if ($Release) {
     if (-not (Test-Path -LiteralPath $Release -PathType Container)) { Bad "-Release: no directory $Release" }
     else {
-        $bins = @(Get-ChildItem -LiteralPath $Release -Recurse -File -Include *.exe, *.dll | Where-Object { $_.Name -like 'GoPray*' })
+        # .exe/.dll only (PowerShell 5.1 ignores -Include with -LiteralPath, so filter by extension). Symbols (.pdb)
+        # name source files such as DebugHarness.cs; release.ps1 must not ship them (Phase 5).
+        $bins = @(Get-ChildItem -LiteralPath $Release -Recurse -File | Where-Object { $_.Name -like 'GoPray*' -and @('.exe', '.dll') -contains $_.Extension.ToLowerInvariant() })
         if (-not $bins.Count) { Bad "-Release: no GoPray*.exe/.dll in $Release" }
-        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_HIDE_ONLY', '--debug-seed')
+        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_HIDE_ONLY', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash')
         foreach ($b in $bins) {
             $bytes = [IO.File]::ReadAllBytes($b.FullName)
             $ascii = [Text.Encoding]::ASCII.GetString($bytes)

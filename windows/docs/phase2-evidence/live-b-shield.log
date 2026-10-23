@@ -1,0 +1,16 @@
+[  0.084] start prayer=Isha mode=WholeScreen lock=10s cap=15s monitors=1 hookBefore=False
+[  0.103] core: notice block start isha
+[  0.336] shield: keyboard guard installed=True
+[  0.349] triggered: phase=Locked slots=1 layouts=Full hook=True
+[  0.453] phase=Locked presenting=True ready=False fallback=False hook=True reasserts=0/0
+[  0.667] phase=Locked presenting=True ready=True fallback=False hook=True reasserts=0/0
+[  1.343] foreground after 1 s: GoPray (us)
+[  1.711] phase=Locked presenting=True ready=True fallback=False hook=True reasserts=1/0
+[ 10.090] phase=CanConfirm presenting=True ready=True fallback=False hook=True reasserts=1/0
+[ 11.368] core: notice block confirmed isha
+[ 11.370] shield: keyboard guard removed
+[ 11.372] after lock: page click "clicked"
+[ 11.419] phase=Leaving presenting=True ready=True fallback=False hook=False reasserts=1/0
+[ 12.747] phase=Idle presenting=False ready= fallback= hook=False reasserts=1/0
+[ 12.748] IDLE: block ended; hook=False keyEventsSeen=4 lastConfirmed=Isha
+[ 14.774] exit 0 after linger 2s; hook=False keyEventsSeen=4 (unchanged = no hook after the block)
