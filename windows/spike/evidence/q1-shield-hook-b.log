@@ -1,0 +1,23 @@
+[   0.008] === q1-shield-hook-b start 2026-10-23 16:24:59.189 pid=20712
+[   0.011] seconds=15 hook=True reassert=True
+[   0.060] monitors=1
+[   0.315] shield \\.\DISPLAY1 want={X=0,Y=0,Width=1920,Height=1080} setpos=True got=(0,0,1920,1080) primary=True
+[   0.325] after show fg=GoPraySpike/HwndWrapper[GoPraySpike;;5f04200e-43f7-4afa-8e76-128457a65675] ours=True
+[   0.326] LL hook installed=True err=0
+[   0.326] winevent hook installed=True
+[   0.327] taskbar rect=(0,1020,1920,1080) probe=(960,1050) trayVisible=True
+[   0.364] poll fg -> OURS
+[   2.131] hook SWALLOW ctrl+shift+esc down injected=True
+[   2.176] hook SWALLOW ctrl+shift+esc up injected=True
+[   3.569] hook SWALLOW win down injected=True
+[   3.615] hook SWALLOW win+combo down injected=True
+[   3.663] hook SWALLOW win+combo up injected=True
+[   3.710] hook SWALLOW win up injected=True
+[   5.063] Closing CANCELLED (Alt+F4/WM_CLOSE)
+[   6.787] fg event -> GoPraySpike/HwndWrapper[GoPraySpike;;2421be42-2ec7-4224-88a5-026cb23eb6b3] 'GOPRAY-SPIKE-STEAL'
+[   6.792] poll fg -> GoPraySpike/HwndWrapper[GoPraySpike;;2421be42-2ec7-4224-88a5-026cb23eb6b3]
+[   6.850] reassert try 0 SetForegroundWindow=True fgNow=OURS
+[   6.851] fg back to OURS after 62 ms
+[   6.852] poll fg -> OURS
+[  15.322] unhook kb=True
+[  15.325] SUMMARY fgLost=1 sfwCalls=1 sfwRefused=0 reassertLatencyMs=[62] taskbarPeeks=0 taskbarPeekTotalMs=0 stillUncovered=False swallowed={ctrl+shift+esc:2, win:2, win+combo:2}

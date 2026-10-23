@@ -1,0 +1,9 @@
+[   0.017] === q1-keys-nohook-strong start 2026-10-23 16:26:13.722 pid=39768
+[   2.037] --> win
+[   2.298]     +150ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.456]     +300ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.615]     +450ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.773]     +600ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.931]     +750ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   3.088]     +900ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   3.401] keys done

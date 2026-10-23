@@ -1,0 +1,31 @@
+[   0.017] === q6-hider start 2026-10-23 16:29:01.007 pid=32012
+[   0.045] visible top-level windows by exe (* = on the coding list): explorerx12, WindowsTerminalx1*, warpx2*, msedgex2*, powershellx4*, ChatGPTx1*, SystemSettingsx1, ApplicationFrameHostx1, TextInputHostx1, Spotifyx1, cmdx1*, Cursorx1*
+[   0.055] test window WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS pid=29328 title='GOPRAY-SPIKE-HIDE-wt' listed=True
+[   0.056] test window msedge/Chrome_WidgetWin_1 pid=21800 title='(by pid; title not logged)' listed=True
+[   0.056] test window cmd/ConsoleWindowClass pid=19232 title='GOPRAY-SPIKE-HIDE-conhost' listed=True
+[   0.057] test window Cursor/Chrome_WidgetWin_1 pid=29640 title='GOPRAY-SPIKE-HIDE-cursor - Cursor' listed=True
+[   0.371] minimise WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS ShowWindow=True err=0 iconic=True
+[   0.682] minimise msedge/Chrome_WidgetWin_1 ShowWindow=True err=0 iconic=True
+[   0.997] minimise cmd/ConsoleWindowClass ShowWindow=True err=0 iconic=True
+[   1.299] minimise Cursor/Chrome_WidgetWin_1 ShowWindow=True err=0 iconic=True
+[   4.432] restore+foreground WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS SetForegroundWindow=True
+[   5.451]    1 s later iconic=False fg=WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS
+[   7.476] restore+foreground msedge/Chrome_WidgetWin_1 SetForegroundWindow=True
+[   7.477]    event fg hwnd=msedge/Chrome_WidgetWin_1 pid=21800 root=msedge/Chrome_WidgetWin_1
+[   7.498]    event fg hwnd=WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS pid=29328 root=WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS
+[   7.511] [event] fg -> listed WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS (event hwnd WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS same=True): re-minimise ShowWindow=True 3088 ms after restore
+[   7.511] [event] fg -> listed msedge/Chrome_WidgetWin_1 (event hwnd msedge/Chrome_WidgetWin_1 same=True): re-minimise ShowWindow=True 70 ms after restore
+[   8.475]    1 s later iconic=True fg=msedge/Chrome_WidgetWin_1
+[  10.492] restore+foreground cmd/ConsoleWindowClass SetForegroundWindow=True
+[  11.493]    1 s later iconic=False fg=cmd/ConsoleWindowClass
+[  13.511] restore+foreground Cursor/Chrome_WidgetWin_1 SetForegroundWindow=True
+[  13.512]    event fg hwnd=Cursor/Chrome_WidgetWin_1 pid=29640 root=Cursor/Chrome_WidgetWin_1
+[  13.530]    event fg hwnd=cmd/ConsoleWindowClass pid=19232 root=cmd/ConsoleWindowClass
+[  13.536] [event] fg -> listed cmd/ConsoleWindowClass (event hwnd cmd/ConsoleWindowClass same=True): re-minimise ShowWindow=True 3055 ms after restore
+[  13.537] [event] fg -> listed Cursor/Chrome_WidgetWin_1 (event hwnd Cursor/Chrome_WidgetWin_1 same=True): re-minimise ShowWindow=True 43 ms after restore
+[  14.520]    1 s later iconic=True fg=Cursor/Chrome_WidgetWin_1
+[  19.529] final WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS iconic=True
+[  19.529] final msedge/Chrome_WidgetWin_1 iconic=True
+[  19.529] final cmd/ConsoleWindowClass iconic=True
+[  19.530] final Cursor/Chrome_WidgetWin_1 iconic=True
+[  19.530] hider done

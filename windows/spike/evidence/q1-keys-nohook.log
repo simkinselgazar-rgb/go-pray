@@ -1,0 +1,10 @@
+[   0.016] === q1-keys-nohook start 2026-10-23 16:25:22.964 pid=31916
+[   2.033] --> win
+[   2.293]     +150ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.450]     +300ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.607]     +450ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.765]     +600ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   2.922]     +750ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   3.080]     +900ms fg=SearchHost/Windows.UI.Core.CoreWindow
+[   3.393] STOP: foreground is SearchHost/Windows.UI.Core.CoreWindow, not the spike shield; not injecting more keys
+[   3.394] keys done

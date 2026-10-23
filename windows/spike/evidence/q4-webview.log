@@ -1,0 +1,31 @@
+[   0.016] === q4-webview start 2026-10-23 16:24:02.859 pid=31436
+[   0.021] scenes=%USERPROFILE%\dev\go-pray\GoPray\Resources\scenes exists=True
+[   0.303] runtime=155.0.4283.62
+[   0.797] shim injected id=2
+[   0.804] NavigationStarting https://gopray.invalid/shield.html allowed=True
+[   0.865] NavigationCompleted ok=True status=Unknown
+[   0.870] WebMessageReceived source=https://gopray.invalid/shield.html sourceOk=True json={"type":"ready"}
+[   0.877] ready within 4 s = True
+[   0.882] js `typeof window.webkit.messageHandlers.gopray.postMessage` => "function"
+[   0.883] js `typeof window.GoPrayBridge` => "object"
+[   0.884] js `GoPrayBridge.violations()` => 0
+[   1.076] js `GoPrayBridge.show({"prayer":"dhuhr","layout":"full","reduceMotion":false,"remainingMs":8000,"lockMs":8000,"athanRemainingMs":0,"hiddenAppName":""})` => null
+[   4.091] js `(function(){var b=document.querySelector('.prayed');return b?('disabled='+b.disabled):'no button'})()` => "disabled=true"
+[   4.094] js `(function(){var r=document.querySelector('.prayed').getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()` => "{\"x\":207.13750457763672,\"y\":449.71875}"
+[   4.105] trusted (CDP) click at 207,450
+[   4.914] messages so far: ready
+[  10.916] js `(function(){var b=document.querySelector('.prayed');return b?('disabled='+b.disabled):'no button'})()` => "disabled=false"
+[  11.261] js `(function(){var r=document.querySelector('.prayed').getBoundingClientRect();return JSON.stringify({x:r.left+r.width/2,y:r.top+r.height/2})})()` => "{\"x\":207.13750457763672,\"y\":449.71875}"
+[  11.264] WebMessageReceived source=https://gopray.invalid/shield.html sourceOk=True json={"type":"prayed"}
+[  11.265] trusted (CDP) click at 207,450
+[  12.275] messages after click: ready,prayed  prayedCount=1
+[  12.276] js `GoPrayBridge.violations()` => 0
+[  12.277] js `(function(){var s=document.createElement('script');s.textContent='window.__inline=1';document.body.appendChild(s);return 'added'})()` => "added"
+[  12.565] WebMessageReceived source=https://gopray.invalid/shield.html sourceOk=True json={"type":"gone"}
+[  12.583] js `String(window.__inline)` => "undefined"
+[  12.584] js `GoPrayBridge.violations()` => 1
+[  12.585] js `location.href='https://example.com/'; 'nav'` => "nav"
+[  12.590] NavigationStarting https://example.com/ allowed=False
+[  12.648] NavigationCompleted ok=False status=OperationCanceled
+[  13.396] js `location.href` => "https://gopray.invalid/shield.html"
+[  13.396] web done

@@ -1,0 +1,43 @@
+[   0.007] === q1-shield-nohook start 2026-10-23 16:25:22.981 pid=23240
+[   0.011] seconds=12 hook=False reassert=True
+[   0.090] monitors=1
+[   0.514] shield \\.\DISPLAY1 want={X=0,Y=0,Width=1920,Height=1080} setpos=True got=(0,0,1920,1080) primary=True
+[   0.527] after show fg=GoPraySpike/HwndWrapper[GoPraySpike;;0be90727-46c4-4432-97d3-f38768eab4a2] ours=True
+[   0.529] winevent hook installed=True
+[   0.530] taskbar rect=(0,1020,1920,1080) probe=(960,1050) trayVisible=True
+[   0.580] poll fg -> OURS
+[   2.078] fg event -> SearchHost/Windows.UI.Core.CoreWindow ''
+[   2.083] poll fg -> SearchHost/Windows.UI.Core.CoreWindow
+[   2.142] fg back to OURS after 63 ms
+[   2.143] reassert try 0 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.199] TASKBAR POINT UNCOVERED by explorer/Shell_TrayWnd
+[   2.247] reassert try 1 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.354] reassert try 2 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.464] reassert try 3 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.575] reassert try 4 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.685] reassert try 5 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.796] reassert try 6 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.906] reassert try 7 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.015] reassert try 8 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.125] reassert try 9 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.236] reassert try 10 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.346] reassert try 11 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.455] reassert try 12 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.565] reassert try 13 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.680] reassert try 14 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.792] reassert try 15 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.901] reassert try 16 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.012] reassert try 17 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.123] reassert try 18 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.233] reassert try 19 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.345] reassert try 20 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.456] reassert try 21 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.567] reassert try 22 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.679] reassert try 23 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.789] reassert try 24 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.900] reassert try 25 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.011] reassert try 26 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.122] reassert try 27 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.234] reassert try 28 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.344] reassert try 29 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[  12.544] SUMMARY fgLost=1 sfwCalls=30 sfwRefused=30 reassertLatencyMs=[63] taskbarPeeks=0 taskbarPeekTotalMs=0 stillUncovered=True swallowed={}

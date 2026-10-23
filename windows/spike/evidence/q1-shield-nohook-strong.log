@@ -1,0 +1,72 @@
+[   0.007] === q1-shield-nohook-strong start 2026-10-23 16:26:13.753 pid=30604
+[   0.011] seconds=10 hook=False reassert=True strong=True
+[   0.066] monitors=1
+[   0.346] shield \\.\DISPLAY1 want={X=0,Y=0,Width=1920,Height=1080} setpos=True got=(0,0,1920,1080) primary=True
+[   0.355] after show fg=GoPraySpike/HwndWrapper[GoPraySpike;;3bf2842f-c764-408c-9aa7-a47c4fa35084] ours=True
+[   0.356] winevent hook installed=True
+[   0.357] taskbar rect=(0,1020,1920,1080) probe=(960,1050) trayVisible=True
+[   0.399] poll fg -> OURS
+[   2.058] fg event -> SearchHost/Windows.UI.Core.CoreWindow ''
+[   2.063] poll fg -> SearchHost/Windows.UI.Core.CoreWindow
+[   2.129]    strong: attach=False SetForegroundWindow=False
+[   2.129] reassert try 0 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.158] TASKBAR POINT UNCOVERED by explorer/Shell_TrayWnd
+[   2.236]    strong: attach=False SetForegroundWindow=False
+[   2.236] reassert try 1 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.347]    strong: attach=False SetForegroundWindow=False
+[   2.348] reassert try 2 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.458]    strong: attach=False SetForegroundWindow=False
+[   2.458] reassert try 3 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.569]    strong: attach=False SetForegroundWindow=False
+[   2.570] reassert try 4 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.680]    strong: attach=False SetForegroundWindow=False
+[   2.681] reassert try 5 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.791]    strong: attach=False SetForegroundWindow=False
+[   2.792] reassert try 6 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   2.901]    strong: attach=False SetForegroundWindow=False
+[   2.902] reassert try 7 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.011]    strong: attach=False SetForegroundWindow=False
+[   3.011] reassert try 8 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.121]    strong: attach=False SetForegroundWindow=False
+[   3.122] reassert try 9 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.230]    strong: attach=False SetForegroundWindow=False
+[   3.231] reassert try 10 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.339]    strong: attach=False SetForegroundWindow=False
+[   3.340] reassert try 11 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.450]    strong: attach=False SetForegroundWindow=False
+[   3.451] reassert try 12 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.559]    strong: attach=False SetForegroundWindow=False
+[   3.560] reassert try 13 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.669]    strong: attach=False SetForegroundWindow=False
+[   3.670] reassert try 14 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.781]    strong: attach=False SetForegroundWindow=False
+[   3.781] reassert try 15 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   3.889]    strong: attach=False SetForegroundWindow=False
+[   3.890] reassert try 16 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.000]    strong: attach=False SetForegroundWindow=False
+[   4.000] reassert try 17 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.107]    strong: attach=False SetForegroundWindow=False
+[   4.108] reassert try 18 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.217]    strong: attach=False SetForegroundWindow=False
+[   4.217] reassert try 19 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.325]    strong: attach=False SetForegroundWindow=False
+[   4.326] reassert try 20 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.435]    strong: attach=False SetForegroundWindow=False
+[   4.435] reassert try 21 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.544]    strong: attach=False SetForegroundWindow=False
+[   4.545] reassert try 22 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.654]    strong: attach=False SetForegroundWindow=False
+[   4.654] reassert try 23 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.763]    strong: attach=False SetForegroundWindow=False
+[   4.763] reassert try 24 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.871]    strong: attach=False SetForegroundWindow=False
+[   4.872] reassert try 25 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   4.974]    strong: attach=False SetForegroundWindow=False
+[   4.974] reassert try 26 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.084]    strong: attach=False SetForegroundWindow=False
+[   5.085] reassert try 27 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.196]    strong: attach=False SetForegroundWindow=False
+[   5.196] reassert try 28 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[   5.306]    strong: attach=False SetForegroundWindow=False
+[   5.307] reassert try 29 SetForegroundWindow=False fgNow=SearchHost/Windows.UI.Core.CoreWindow
+[  10.362] SUMMARY fgLost=1 sfwCalls=30 sfwRefused=30 reassertLatencyMs=[] taskbarPeeks=0 taskbarPeekTotalMs=0 stillUncovered=True swallowed={}

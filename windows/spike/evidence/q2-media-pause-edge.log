@@ -1,0 +1,8 @@
+[   0.014] === q2-media-pause-edge start 2026-10-23 16:26:49.716 pid=9860
+[   0.085] RequestAsync returned in 41 ms, mgr=True fg before=msedge/Chrome_WidgetWin_1 after=msedge/Chrome_WidgetWin_1
+[   0.088] sessions=2
+[   0.107]   session app=SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify status=Paused canPause=False (not ours: title not logged, not touched)
+[   0.109]   session app=MSEdge status=Playing canPause=True title=GOPRAY-SPIKE-EDGE (OURS)
+[   0.613]   TryPauseAsync -> True in 504 ms; status now=Paused
+[   0.614] fg at end=msedge/Chrome_WidgetWin_1
+[   0.615] pause done

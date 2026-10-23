@@ -1,0 +1,8 @@
+[   0.015] === q2-media-pause start 2026-10-23 16:22:59.441 pid=8416
+[   0.082] RequestAsync returned in 37 ms, mgr=True fg before=warp/Window Class after=warp/Window Class
+[   0.085] sessions=2
+[   0.104]   session app=SpotifyAB.SpotifyMusic_zpdnekdrzrea0!Spotify status=Paused canPause=False (not ours: title not logged, not touched)
+[   0.106]   session app=GoPraySpike.exe status=Playing canPause=True title= (OURS)
+[   0.624]   TryPauseAsync -> True in 518 ms; status now=Paused
+[   0.624] fg at end=warp/Window Class
+[   0.625] pause done

@@ -1,0 +1,26 @@
+[   0.017] === q6-hider start 2026-10-23 16:28:04.862 pid=31668
+[   0.045] visible top-level windows by exe (* = on the coding list): explorerx12, cmdx1*, msedgex2*, Cursorx1*, WindowsTerminalx1*, warpx2*, powershellx4*, ChatGPTx1*, SystemSettingsx1, ApplicationFrameHostx1, TextInputHostx1, Spotifyx1
+[   0.054] test window cmd/ConsoleWindowClass pid=19232 title='GOPRAY-SPIKE-HIDE-conhost' listed=True
+[   0.055] test window msedge/Chrome_WidgetWin_1 pid=21800 title='(by pid; title not logged)' listed=True
+[   0.055] test window Cursor/Chrome_WidgetWin_1 pid=29640 title='GOPRAY-SPIKE-HIDE-cursor - Cursor' listed=True
+[   0.055] test window WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS pid=29328 title='GOPRAY-SPIKE-HIDE-wt' listed=True
+[   0.376] minimise cmd/ConsoleWindowClass ShowWindow=True err=0 iconic=True
+[   0.716] minimise msedge/Chrome_WidgetWin_1 ShowWindow=True err=0 iconic=True
+[   1.028] minimise Cursor/Chrome_WidgetWin_1 ShowWindow=True err=0 iconic=True
+[   1.341] minimise WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS ShowWindow=True err=0 iconic=True
+[   4.512] restore+foreground cmd/ConsoleWindowClass SetForegroundWindow=True
+[   5.509]    1 s later iconic=False fg=cmd/ConsoleWindowClass
+[   7.545] restore+foreground msedge/Chrome_WidgetWin_1 SetForegroundWindow=True
+[   7.579] fg -> listed cmd/ConsoleWindowClass: re-minimise ShowWindow=True 3082 ms after restore
+[   7.580] fg -> listed msedge/Chrome_WidgetWin_1: re-minimise ShowWindow=True 69 ms after restore
+[   8.551]    1 s later iconic=True fg=msedge/Chrome_WidgetWin_1
+[  10.562] restore+foreground Cursor/Chrome_WidgetWin_1 SetForegroundWindow=True
+[  10.580] fg -> listed Cursor/Chrome_WidgetWin_1: re-minimise ShowWindow=True 41 ms after restore
+[  11.571]    1 s later iconic=True fg=Cursor/Chrome_WidgetWin_1
+[  13.579] restore+foreground WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS SetForegroundWindow=True
+[  14.587]    1 s later iconic=False fg=WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS
+[  19.614] final cmd/ConsoleWindowClass iconic=True
+[  19.614] final msedge/Chrome_WidgetWin_1 iconic=True
+[  19.615] final Cursor/Chrome_WidgetWin_1 iconic=True
+[  19.615] final WindowsTerminal/CASCADIA_HOSTING_WINDOW_CLASS iconic=False
+[  19.615] hider done

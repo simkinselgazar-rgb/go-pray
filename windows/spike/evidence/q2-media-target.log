@@ -1,0 +1,10 @@
+[   0.017] === q2-media-target start 2026-10-23 16:22:55.669 pid=16420
+[   0.146] target playing (silent, volume 0)
+[   0.346] target state -> Paused
+[   0.348] target state -> Playing
+[   1.156] target poll state=Playing smtcStatus=Playing
+[   3.887] target state -> Paused
+[   4.190] target poll state=Paused smtcStatus=Paused
+[   7.203] target poll state=Paused smtcStatus=Paused
+[  10.241] target poll state=Paused smtcStatus=Paused
+[  12.244] target exit

@@ -1,0 +1,23 @@
+[   0.008] === q1-shield-hook-a start 2026-10-23 16:24:32.067 pid=21564
+[   0.011] seconds=15 hook=True reassert=True
+[   0.082] monitors=1
+[   0.358] shield \\.\DISPLAY1 want={X=0,Y=0,Width=1920,Height=1080} setpos=True got=(0,0,1920,1080) primary=True
+[   0.364] after show fg=GoPraySpike/HwndWrapper[GoPraySpike;;08e0c9b2-dd9b-477a-bd14-4ea66bcdb7a4] ours=True
+[   0.366] LL hook installed=True err=0
+[   0.366] winevent hook installed=True
+[   0.367] taskbar rect=(0,1020,1920,1080) probe=(960,1050) trayVisible=True
+[   0.408] poll fg -> OURS
+[   1.983] hook SWALLOW win down injected=True
+[   2.033] hook SWALLOW win up injected=True
+[   3.403] hook SWALLOW alt+tab down injected=True
+[   3.450] hook SWALLOW alt+tab up injected=True
+[   5.109] hook SWALLOW win down injected=True
+[   5.155] hook SWALLOW win+combo down injected=True
+[   5.202] hook SWALLOW win+combo up injected=True
+[   5.249] hook SWALLOW win up injected=True
+[   6.594] hook SWALLOW ctrl+esc down injected=True
+[   6.641] hook SWALLOW ctrl+esc up injected=True
+[   8.054] hook SWALLOW alt+esc down injected=True
+[   8.102] hook SWALLOW alt+esc up injected=True
+[  15.375] unhook kb=True
+[  15.379] SUMMARY fgLost=0 sfwCalls=0 sfwRefused=0 reassertLatencyMs=[] taskbarPeeks=0 taskbarPeekTotalMs=0 stillUncovered=False swallowed={win:4, alt+tab:2, win+combo:2, ctrl+esc:2, alt+esc:2}

@@ -1,0 +1,3 @@
+[   0.014] === q1-steal start 2026-10-23 16:25:05.727 pid=25124
+[   0.285] steal SetForegroundWindow=True fg=GoPraySpike/HwndWrapper[GoPraySpike;;2421be42-2ec7-4224-88a5-026cb23eb6b3] mine=True
+[   2.306] steal end fg=GoPraySpike/HwndWrapper[GoPraySpike;;5f04200e-43f7-4afa-8e76-128457a65675] mine=False
