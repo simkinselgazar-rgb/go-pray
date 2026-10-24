@@ -29,6 +29,7 @@ struct SettingsView: View {
                 locationSection
                 timesSection
                 blockSection
+                blockedAppsSection
                 pauseSection
                 athanSection
                 generalSection
@@ -125,6 +126,47 @@ struct SettingsView: View {
                 }
             }
             help("How long the screen rests after each Athan. Never under \(LockPolicy.minMinutes) minutes. A new length starts at the next prayer.")
+
+            Toggle("Allow emergency exits", isOn: model.binding(\.emergencyExitsEnabled).binding)
+            help("Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.")
+            Text(s.emergencyExitsEnabled ? model.exitsLine : EmergencyExitPolicy.offLine).font(.callout).foregroundStyle(.secondary)
+        }
+    }
+
+    // MARK: Blocked apps (v2)
+
+    private var blockedAppsSection: some View {
+        Section("Blocked apps") {
+            help("Only these apps rest in Coding apps mode. Turn ours off, or add your own. Changes start at the next prayer.")
+            ForEach(model.defaultAppRows) { row in
+                Toggle(row.name, isOn: Binding(get: { row.isOn }, set: { model.setDefaultApp(row.id, on: $0) }))
+            }
+            let mine = model.customAppRows
+            if !mine.isEmpty {
+                Text("Added by you").font(.callout.weight(.semibold)).padding(.top, Spacing.s8)
+                ForEach(mine) { row in
+                    LabeledContent {
+                        Button { model.removeCustomApp(row.id) } label: { Image(systemName: "minus.circle") }
+                            .buttonStyle(.borderless)
+                            .accessibilityLabel("Remove \(row.name)")
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(row.name)
+                            Text(row.id).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            }
+            Button("Add an app…") { addApp() }
+            if model.effectiveAppCount == 0 { help(SettingsViewModel.emptyListLine) }
+        }
+    }
+
+    private func addApp() {
+        switch AppPicker.pick() {
+        case .cancelled: break
+        case .unreadable: model.reportNotice("Couldn't read that app. Try another one.")
+        case .picked(let app): model.addApp(app)
         }
     }
 
@@ -188,6 +230,8 @@ struct SettingsView: View {
         Section("General") {
             Toggle("Launch at login", isOn: Binding(get: { s.launchAtLogin }, set: { model.setLaunchAtLogin($0) }))
             if !s.launchAtLogin { help(LoginAgentCopy.firstRunNote) }       // shown before register()
+            Toggle("Check for updates automatically", isOn: model.binding(\.checkForUpdates).binding)
+            help("Once a day, from GitHub. Nothing about you is sent.")
             if credits != nil {
                 Button("Credits and thanks") { showCredits = true }.buttonStyle(.link)
             }

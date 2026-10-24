@@ -18,6 +18,11 @@ struct BlockStateFile: Codable, Equatable, Sendable {
         /// start (CONTRACT-NOTES #26). Missing in a file → the default 10 min.
         /// The gate never honours more than `LockPolicy.maxSeconds`.
         var lockSeconds: TimeInterval
+        /// v2 (CONTRACT-NOTES #49): the effective blocked-apps list, captured at block start. nil =
+        /// a 0.1.x file resumed after an upgrade (the gate computes it once and writes it back).
+        var hiddenApps: [String]?
+        /// v2 (PM amendment §9.2): "Allow emergency exits" as it was at block start. Missing → true.
+        var emergencyExitsEnabled: Bool
         #if DEBUG
         /// DEBUG only: the synthetic window end of a "Trigger Athan now" block (athan = trigger
         /// time), so a relaunch resumes it like a real block instead of failing it open.
@@ -26,17 +31,20 @@ struct BlockStateFile: Codable, Equatable, Sendable {
         #endif
 
         init(prayer: Prayer, athanAt: Date, blockStartedAt: Date, silenced: Bool, athanPlayed: Bool,
-             lockSeconds: TimeInterval = LockPolicy.seconds(forMinutes: LockPolicy.defaultMinutes)) {
+             lockSeconds: TimeInterval = LockPolicy.seconds(forMinutes: LockPolicy.defaultMinutes),
+             hiddenApps: [String]? = nil, emergencyExitsEnabled: Bool = true) {
             self.prayer = prayer
             self.athanAt = athanAt
             self.blockStartedAt = blockStartedAt
             self.silenced = silenced
             self.athanPlayed = athanPlayed
             self.lockSeconds = lockSeconds
+            self.hiddenApps = hiddenApps
+            self.emergencyExitsEnabled = emergencyExitsEnabled
         }
 
         enum CodingKeys: String, CodingKey {
-            case prayer, athanAt, blockStartedAt, silenced, athanPlayed, lockSeconds
+            case prayer, athanAt, blockStartedAt, silenced, athanPlayed, lockSeconds, hiddenApps, emergencyExitsEnabled
             #if DEBUG
             case debugWindowEnd
             #endif
@@ -50,7 +58,9 @@ struct BlockStateFile: Codable, Equatable, Sendable {
                       silenced: try c.decode(Bool.self, forKey: .silenced),
                       athanPlayed: try c.decode(Bool.self, forKey: .athanPlayed),
                       lockSeconds: try c.decodeIfPresent(TimeInterval.self, forKey: .lockSeconds)
-                          ?? LockPolicy.seconds(forMinutes: LockPolicy.defaultMinutes))
+                          ?? LockPolicy.seconds(forMinutes: LockPolicy.defaultMinutes),
+                      hiddenApps: try c.decodeIfPresent([String].self, forKey: .hiddenApps),
+                      emergencyExitsEnabled: try c.decodeIfPresent(Bool.self, forKey: .emergencyExitsEnabled) ?? true)
             #if DEBUG
             debugWindowEnd = try c.decodeIfPresent(Date.self, forKey: .debugWindowEnd)
             #endif

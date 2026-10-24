@@ -20,15 +20,40 @@ extension Settings {
         method: CalculationMethod.muslimWorldLeague.rawValue, madhab: Madhab.shafi.rawValue,
         highLatitudeRule: nil, mode: .wholeScreen, voice: VoiceChoices.defaultVoice, athanVolume: 0.8,
         launchAtLogin: true, setupComplete: false, reduceMotion: nil,
-        lockMinutes: LockPolicy.defaultMinutes, pausedUntil: nil)
+        lockMinutes: LockPolicy.defaultMinutes, pausedUntil: nil,
+        disabledDefaultApps: [], customApps: [], emergencyExitsEnabled: true, checkForUpdates: true)
 
-    /// Clamp what has a natural range: break length 10–30, volume 0–1.
+    /// Clamp what has a natural range: break length 10–30, volume 0–1, and the blocked-apps lists
+    /// (trim, drop the never-blockable ids, dedupe, cap; nothing throws for these).
     /// A NaN volume falls back to the default. Everything else is checked by `validate()`.
     func sanitized() -> Settings {
         var s = self
         s.lockMinutes = LockPolicy.clamp(lockMinutes)
         s.athanVolume = athanVolume.isFinite ? min(max(athanVolume, 0), 1) : Settings.defaults.athanVolume
+        s.disabledDefaultApps = Self.cleanDisabled(disabledDefaultApps)
+        s.customApps = Self.cleanCustom(customApps)
         return s
+    }
+
+    private static func cleanDisabled(_ ids: [String]) -> [String] {
+        var seen = Set<String>()
+        let out = ids.map { String(BlockedApps.normalize($0).prefix(BlockedApps.maxIDLength)) }
+            .filter { BlockedApps.isBlockable($0) && seen.insert($0).inserted }
+        return Array(out.prefix(BlockedApps.maxDisabled))
+    }
+
+    /// One entry per (platform, id). The never-block list is applied to this platform's entries.
+    private static func cleanCustom(_ apps: [CustomApp]) -> [CustomApp] {
+        var seen = Set<String>()
+        var out: [CustomApp] = []
+        for var app in apps {
+            app.id = String(BlockedApps.normalize(app.id).prefix(BlockedApps.maxIDLength))
+            app.name = String(app.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(BlockedApps.maxNameLength))
+            guard !app.id.isEmpty, app.platform != BlockedApps.current || BlockedApps.isBlockable(app.id),
+                  seen.insert("\(app.platform.rawValue)|\(app.id)").inserted else { continue }
+            out.append(app)
+        }
+        return Array(out.prefix(BlockedApps.maxCustom))
     }
 
     /// Throws for values that cannot be turned into a schedule. Never repairs them.

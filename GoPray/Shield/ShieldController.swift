@@ -64,6 +64,7 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
     private var ctxAt = ContinuousClock.now
     private var epoch = 0
     private var dismissCompletion: (() -> Void)?
+    private var dismissKind: EndKind = .confirmed
     private var dismissTask: Task<Void, Never>?
     private var rebuildTask: Task<Void, Never>?
     private var reactivateTask: Task<Void, Never>?
@@ -115,15 +116,16 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
         }
     }
 
-    func dismiss(thenIdle: @escaping () -> Void) {
+    func dismiss(kind: EndKind, thenIdle: @escaping () -> Void) {
         guard isPresenting else { thenIdle(); return }
         if isDismissing { dismissCompletion = thenIdle; return }
         isDismissing = true
         dismissCompletion = thenIdle
         for slot in slots {
-            if slot.fellBack { if slot.isMain { slot.fallback?.accepting = true } }
-            else { slot.web?.dismissPage() }
+            if slot.fellBack { if slot.isMain { slot.fallback?.beginLeaving(kind) } }
+            else { slot.web?.dismissPage(kind: kind) }
         }
+        dismissKind = kind
         armDismissTimer()
     }
 
@@ -225,6 +227,11 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
         case .silence:
             guard slot.isMain, isPresenting, !isDismissing else { return }
             delegate?.shieldDidRequestSilence()
+        case .emergency:
+            guard slot.isMain, isPresenting, !isDismissing else { return }
+            // Like `prayed`: if the gate refuses, its `update` rebuilds the page with the true count.
+            slot.needsReshow = true
+            delegate?.shieldDidRequestEmergencyExit()
         case .gone:
             if isDismissing, slot.isMain { finishDismiss() }
         }
@@ -251,13 +258,17 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
                 guard let self, self.isPresenting, !self.isDismissing else { return }
                 self.delegate?.shieldDidRequestSilence()
             }
+            model.onEmergency = { [weak self] in
+                guard let self, self.isPresenting, !self.isDismissing else { return }
+                self.delegate?.shieldDidRequestEmergencyExit()
+            }
             slot.fallback = model
             let host = NSHostingView(rootView: NativeFallbackShield(model: model))
             host.frame = NSRect(origin: .zero, size: slot.panel.frame.size)
             host.autoresizingMask = [.width, .height]
             slot.panel.contentView = host
             if slot.layout == .notice { CodingNoticePanel.style(slot.panel) }
-            if isDismissing { model.accepting = true; armDismissTimer() }
+            if isDismissing { model.beginLeaving(dismissKind); armDismissTimer() }
         } else {
             let plain = NSView(frame: NSRect(origin: .zero, size: slot.panel.frame.size))
             plain.wantsLayer = true

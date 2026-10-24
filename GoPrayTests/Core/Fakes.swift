@@ -54,6 +54,7 @@ import Foundation
     var shows: [ShieldContext] = []
     var updates: [ShieldContext] = []
     var dismissCount = 0
+    var dismissKinds: [EndKind] = []
     var tearDownCount = 0
     /// true: dismiss completes at once. false: held in `pendingDismiss`.
     var autoCompleteDismiss = true
@@ -61,8 +62,9 @@ import Foundation
 
     func show(_ ctx: ShieldContext) { shows.append(ctx) }
     func update(_ ctx: ShieldContext) { updates.append(ctx) }
-    func dismiss(thenIdle: @escaping () -> Void) {
+    func dismiss(kind: EndKind, thenIdle: @escaping () -> Void) {
         dismissCount += 1
+        dismissKinds.append(kind)
         if autoCompleteDismiss { thenIdle() } else { pendingDismiss = thenIdle }
     }
     func tearDown() { tearDownCount += 1 }
@@ -93,17 +95,20 @@ struct FakeAudioError: Error {}
     var onReHide: ((String) -> Void)?
     var startCount = 0
     var stopCount = 0
-    func start() { startCount += 1 }
+    /// Every set passed to `start(hiding:)`.
+    var started: [Set<String>] = []
+    func start(hiding ids: Set<String>) { startCount += 1; started.append(ids) }
     func stop() { stopCount += 1 }
 }
 
 extension Settings {
     static func test(mode: BlockMode = .wholeScreen, setupComplete: Bool = true,
-                     lockMinutes: Int = LockPolicy.defaultMinutes, pausedUntil: Date? = nil) -> Settings {
+                     lockMinutes: Int = LockPolicy.defaultMinutes, pausedUntil: Date? = nil,
+                     emergencyExitsEnabled: Bool = true) -> Settings {
         Settings(city: "Testville", latitude: 40.7, longitude: -74.0, method: "moonsightingCommittee", madhab: 1,
                  highLatitudeRule: nil, mode: mode, voice: .sunni("test-voice"), athanVolume: 0.8,
                  launchAtLogin: false, setupComplete: setupComplete, reduceMotion: false,
-                 lockMinutes: lockMinutes, pausedUntil: pausedUntil)
+                 lockMinutes: lockMinutes, pausedUntil: pausedUntil, emergencyExitsEnabled: emergencyExitsEnabled)
     }
 }
 
@@ -117,6 +122,9 @@ extension Settings {
     var shield = FakeShield()
     var audio = FakeAudio()
     var hider = FakeHider()
+    /// The compiled-in defaults the gate computes the effective list from.
+    var defaultApps: Set<String> = ["app.one", "app.two"]
+    var mirror = FakeLedgerMirror()
     var gate: BlockGate!
 
     init(at start: Date, settings: Settings = .test(), dir: URL? = nil) {
@@ -129,7 +137,9 @@ extension Settings {
 
     func makeGate() {
         gate = BlockGate(clock: clock, store: StateStore(directory: dir), schedule: schedule, shield: shield,
-                         audio: audio, hider: hider, settings: { [unowned self] in self.settings },
+                         audio: audio, hider: hider,
+                         ledger: EmergencyLedger(directory: dir, mirror: mirror, calendar: Self.calendar),
+                         defaultApps: defaultApps, settings: { [unowned self] in self.settings },
                          leavingTimeout: .milliseconds(200),
                          systemReduceMotion: { false })
     }
@@ -140,6 +150,12 @@ extension Settings {
         makeGate()
         gate.reevaluate(.launch)
     }
+
+    /// UTC, so "this calendar year" is the same on every machine.
+    static var calendar: Calendar { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "UTC")!; return c }
+
+    var ledger: EmergencyLedger { EmergencyLedger(directory: dir, mirror: mirror, calendar: Self.calendar) }
+    var emergencyURL: URL { dir.appendingPathComponent("emergency.json") }
 
     var stateURL: URL { dir.appendingPathComponent("state.json") }
 
@@ -152,4 +168,9 @@ extension Settings {
     }
 
     func cleanup() { try? FileManager.default.removeItem(at: dir) }
+}
+
+/// The prefs mirror, in memory; survives `relaunch()` like the real prefs plist does.
+final class FakeLedgerMirror: EmergencyMirror {
+    var usedJSON: String?
 }

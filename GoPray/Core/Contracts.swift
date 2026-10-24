@@ -41,19 +41,32 @@ struct ShieldContext: Equatable, Sendable {
     /// relaunch or resync. `lockSeconds == 0` means "unknown": the ring then spans `remainingMs`.
     var blockStartedAt: Date? = nil
     var lockSeconds: Int = 0
+    /// v2 (CONTRACT-NOTES #50). Exits left this year; 0 = the page draws no button (none left,
+    /// or the person turned exits off for this block).
+    var emergencyExitsLeft: Int = 0
 }
+
+/// How a block ends. `confirmed` = "I prayed" (after the lock). `emergency` = one of the
+/// yearly exits: recorded as dropped, never as confirmed, and no "May Allah accept it."
+enum EndKind: Sendable { case confirmed, emergency }
 
 @MainActor protocol ShieldDelegate: AnyObject {
     func shieldDidRequestConfirm()   // → gate.requestConfirm(); the shield never ends itself
     func shieldDidRequestSilence()
+    func shieldDidRequestEmergencyExit()   // → gate.requestEmergencyExit(); refused → shield.update(ctx)
 }
 
 @MainActor protocol ShieldPresenting: AnyObject {
     var delegate: ShieldDelegate? { get set }
     func show(_ ctx: ShieldContext)          // idempotent; panels per screen
     func update(_ ctx: ShieldContext)        // remaining/athan changes; re-sync the page
-    func dismiss(thenIdle: @escaping () -> Void)   // plays "May Allah accept it." (≈1.3 s) then closes everything
+    /// `.confirmed` plays "May Allah accept it." (≈1.3 s); `.emergency` is a plain fade. Then closes everything.
+    func dismiss(kind: EndKind, thenIdle: @escaping () -> Void)
     func tearDown()                          // immediate, no animation (overlap, fail-open)
+}
+
+extension ShieldPresenting {
+    func dismiss(thenIdle: @escaping () -> Void) { dismiss(kind: .confirmed, thenIdle: thenIdle) }
 }
 
 // MARK: - Audio (lane C)
@@ -74,7 +87,8 @@ enum Voice: Hashable, Codable, Sendable { case sunni(String), shia(String) }
 
 @MainActor protocol AppHiding: AnyObject {
     var onReHide: ((String) -> Void)? { get set }   // localized app name, for the notice copy
-    func start()      // hide listed running apps, observe launch/activate
+    /// v2 (CONTRACT-NOTES #49): the gate passes the set it captured at block start, never the settings.
+    func start(hiding ids: Set<String>)   // hide those running apps, observe launch/activate
     func stop()
 }
 
@@ -121,6 +135,99 @@ struct Settings: Codable, Equatable, Sendable {
     /// A date in the past = active again. Set it with `PauseOption.until(from:)`;
     /// to resume, set it to `now` (preferred) or nil.
     var pausedUntil: Date?
+    /// v2 (CONTRACT-NOTES #49). Ids from the compiled-in defaults the user turned off. May hold
+    /// ids of both platforms (one file works on both machines). Absent in old files → [].
+    var disabledDefaultApps: [String] = []
+    /// v2. User-added apps, both platforms kept; only `BlockedApps.current` ones apply. Absent → [].
+    var customApps: [CustomApp] = []
+    /// v2 (PM amendment §9.2). "Allow emergency exits". Absent → true. Captured into state.block.
+    var emergencyExitsEnabled: Bool = true
+    /// v2 (§8). "Check for updates automatically". Absent → true.
+    var checkForUpdates: Bool = true
+}
+
+extension Settings {
+    /// Old files lack the v2 keys: they decode as the defaults above.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        city = try c.decode(String.self, forKey: .city)
+        latitude = try c.decode(Double.self, forKey: .latitude)
+        longitude = try c.decode(Double.self, forKey: .longitude)
+        method = try c.decode(String.self, forKey: .method)
+        madhab = try c.decode(Int.self, forKey: .madhab)
+        highLatitudeRule = try c.decodeIfPresent(String.self, forKey: .highLatitudeRule)
+        mode = try c.decode(BlockMode.self, forKey: .mode)
+        voice = try c.decode(Voice.self, forKey: .voice)
+        athanVolume = try c.decode(Float.self, forKey: .athanVolume)
+        launchAtLogin = try c.decode(Bool.self, forKey: .launchAtLogin)
+        setupComplete = try c.decode(Bool.self, forKey: .setupComplete)
+        reduceMotion = try c.decodeIfPresent(Bool.self, forKey: .reduceMotion)
+        lockMinutes = try c.decode(Int.self, forKey: .lockMinutes)
+        pausedUntil = try c.decodeIfPresent(Date.self, forKey: .pausedUntil)
+        disabledDefaultApps = try c.decodeIfPresent([String].self, forKey: .disabledDefaultApps) ?? []
+        customApps = try c.decodeIfPresent([CustomApp].self, forKey: .customApps) ?? []
+        emergencyExitsEnabled = try c.decodeIfPresent(Bool.self, forKey: .emergencyExitsEnabled) ?? true
+        checkForUpdates = try c.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? true
+    }
+}
+
+// MARK: - Blocked apps (v2, CONTRACT-NOTES #49)
+
+enum AppPlatform: String, Codable, Sendable { case mac, windows }
+
+struct CustomApp: Codable, Equatable, Sendable {
+    var id: String
+    var name: String
+    var platform: AppPlatform
+}
+
+enum BlockedApps {
+    static let current: AppPlatform = .mac
+    static let maxCustom = 50, maxDisabled = 200, maxIDLength = 200, maxNameLength = 60
+    /// What the gate honours when it reads `hiddenApps` back from disk.
+    static let maxCaptured = 200
+
+    /// Never hidden, whatever the list says: Go Pray itself, the shell, and the user's
+    /// Force Quit / settings routes. Applied in `Settings.sanitized()`, in the gate when it
+    /// reads state.json, and again in the hider as the last line of defence.
+    static let neverBlock: Set<String> = [
+        "com.ahmedelgazar.gopray", "com.apple.finder", "com.apple.dock", "com.apple.systemuiserver",
+        "com.apple.controlcenter", "com.apple.notificationcenterui", "com.apple.Spotlight",
+        "com.apple.loginwindow", "com.apple.systempreferences", "com.apple.WindowManager",
+        "com.apple.ActivityMonitor",
+    ]
+
+    /// Mac: the exact bundle id, trimmed.
+    static func normalize(_ id: String) -> String { id.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    static func isBlockable(_ id: String) -> Bool {
+        let n = normalize(id)
+        return !n.isEmpty && !neverBlock.contains(n)
+    }
+
+    /// The one place the list is computed: (defaults − disabled) ∪ custom(this platform), minus
+    /// `neverBlock`. `defaults` is injected (Core never imports Blocker).
+    static func effective(_ s: Settings, defaults: Set<String>) -> Set<String> {
+        let off = Set(s.disabledDefaultApps.map(normalize))
+        let on = defaults.map(normalize).filter { !off.contains($0) }
+        let mine = s.customApps.filter { $0.platform == current }.map { normalize($0.id) }
+        return Set(on + mine).filter(isBlockable)
+    }
+
+    /// A captured list read back from state.json: denylisted ids and anything past the cap are dropped.
+    static func sanitizeCaptured(_ ids: [String]) -> Set<String> {
+        Set(ids.prefix(maxCaptured * 4).map(normalize).filter(isBlockable).sorted().prefix(maxCaptured))
+    }
+}
+
+// MARK: - Emergency exits (v2, CONTRACT-NOTES #51; PM amendment §9.1)
+
+enum EmergencyExitPolicy {
+    /// 5 per local calendar year. A use dated in the future still counts (fail safe).
+    static let total = 5
+    static var perYear: Int { total }
+    static let period = "calendar year"
+    static let holdSeconds: TimeInterval = 3
 }
 
 /// Lock length rules (Ahmed, 2026-10-22): 10–30 minutes, default 10.

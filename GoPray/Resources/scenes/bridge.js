@@ -1,13 +1,17 @@
 /* Go Pray — app-only bridge between shield.html and Swift (Architecture Plan C.6).
    The page can ask; only Swift decides. This file never touches the timer logic in ui.js.
-   JS -> Swift: ready, prayed, silence, gone (handler "gopray", payload {type}).
-   Swift -> JS: GoPrayBridge.show(ctx), .athanStopped(), .dismiss(). No key handlers, no chrome. */
+   JS -> Swift: ready, prayed, silence, emergency, gone (handler "gopray", payload {type}).
+   Swift -> JS: GoPrayBridge.show(ctx), .athanStopped(), .dismiss(kind). No key shortcuts, no chrome.
+   v2: a quiet footer "Emergency exit · N of 5 left this year". Hold 3 s (a thin bar fills), then a confirm card, then
+   one `emergency` message. The hold and the card stop a reflex; the gate alone decides whether it counts. */
 (function () {
   'use strict';
   const GP = window.GoPray;
   const ORDER = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
   const LAYOUTS = ['full', 'notice', 'art'];
   const MAX_MS = 30 * 60 * 1000;
+  const HOLD_MS = 3000;
+  const MAX_EXITS = 5;
 
   function post(type) {
     try { window.webkit.messageHandlers.gopray.postMessage({ type: type }); } catch (e) { /* not in the app */ }
@@ -25,11 +29,105 @@
   let revealTimer = 0;
   let quietFromSwift = false;
   let ringObserver = null;
+  let exitEl = null;      // the footer + the confirm card, rebuilt with every show()
+  let exitPending = false;  // `emergency` was sent; a show() before the dismiss means the gate said no
+  let exitNote = '';
+  let exitNoteTimer = 0;
+  const NAME_OF = (p) => { const n = GP.NAMES && GP.NAMES[p]; return n ? n[0] : 'This prayer'; };
+
+  function dropExit() {
+    if (exitEl) { exitEl.remove(); exitEl = null; }
+    const card = shield.querySelector('.exit-card');
+    if (card) card.remove();
+    shield.classList.remove('is-confirming');
+  }
+
+  // Press and hold 3 s on the footer (pointer only: no key shortcut, by design). Release early cancels. Reduce Motion does not stop the bar: it is information, not decoration.
+  function buildExit(prayer, left, layout) {
+    dropExit();
+    if (left <= 0 && !exitNote) return;
+    const root = document.createElement('div');
+    root.className = 'exit';
+    const label = 'Emergency exit \u00b7 ' + left + ' of ' + MAX_EXITS + ' left this year';
+    if (left > 0) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'exit-btn';
+      const fill = document.createElement('span');
+      fill.className = 'exit-fill';
+      fill.setAttribute('aria-hidden', 'true');
+      const text = document.createElement('span');
+      text.className = 'exit-label';
+      btn.appendChild(fill);
+      btn.appendChild(text);
+      text.textContent = label;
+      let timer = 0;
+      const stop = () => {
+        if (!timer) return;
+        clearTimeout(timer); timer = 0;
+        btn.classList.remove('is-holding');
+        text.textContent = label;
+      };
+      const begin = () => {
+        if (timer || exitPending) return;
+        btn.classList.add('is-holding');
+        text.textContent = 'Keep holding\u2026';
+        timer = setTimeout(() => { timer = 0; btn.classList.remove('is-holding'); text.textContent = label; openCard(prayer, left, root); }, HOLD_MS);
+      };
+      btn.addEventListener('pointerdown', (e) => { if (e.button === 0) { e.preventDefault(); begin(); } });
+      ['pointerup', 'pointercancel', 'pointerleave', 'blur'].forEach((n) => btn.addEventListener(n, stop));
+      root.appendChild(btn);
+    }
+    const note = document.createElement('p');
+    note.className = 'exit-note';
+    note.setAttribute('role', 'status');
+    note.textContent = exitNote;
+    root.appendChild(note);
+    shield.appendChild(root);
+    exitEl = root;
+  }
+
+  function openCard(prayer, left, root) {
+    if (shield.querySelector('.exit-card')) return;
+    const card = document.createElement('div');
+    card.className = 'exit-card';
+    card.setAttribute('role', 'alertdialog');
+    card.setAttribute('aria-modal', 'true');
+    card.setAttribute('aria-labelledby', 'exit-title');
+    const rest = left <= 1 ? 'This is your last one this year.' : "You'll have " + (left - 1) + ' of ' + MAX_EXITS + ' left this year.';
+    const make = (tag, cls, text) => {
+      const el = document.createElement(tag);
+      if (cls) el.className = cls;
+      if (text) el.textContent = text;
+      return el;
+    };
+    const title = make('h2', '', 'Use an emergency exit?');
+    title.id = 'exit-title';
+    const bodyEl = make('p', 'exit-body',
+      'This ends the block now. ' + NAME_OF(prayer) + ' will count as missed, not prayed. ' + rest);
+    const actions = make('div', 'exit-actions');
+    const no = make('button', 'exit-no', 'Not now');
+    const yes = make('button', 'exit-yes', 'Use it');
+    no.type = 'button'; yes.type = 'button';
+    actions.appendChild(no); actions.appendChild(yes);
+    card.appendChild(title); card.appendChild(bodyEl); card.appendChild(actions);
+    no.addEventListener('click', () => { card.remove(); shield.classList.remove('is-confirming'); });
+    yes.addEventListener('click', () => {
+      if (exitPending) return;
+      exitPending = true;
+      yes.disabled = true; no.disabled = true;
+      post('emergency');
+    });
+    shield.appendChild(card);
+    shield.classList.add('is-confirming');
+    no.focus({ preventScroll: true });
+  }
 
   function dropUI() {
     clearTimeout(revealTimer);
     if (ringObserver) { ringObserver.disconnect(); ringObserver = null; }
     if (ui) { ui.destroy(); ui = null; }
+    dropExit();
   }
 
   // ui.js draws the ring over `durationMs` from its own start. After a relaunch or resync that would
@@ -62,6 +160,15 @@
     const remainingMs = clampMs(ctx.remainingMs);
     const athanMs = clampMs(ctx.athanRemainingMs);
     const lockMs = clampMs(ctx.lockMs);
+    const exitsLeft = typeof ctx.emergencyExitsLeft === 'number' && isFinite(ctx.emergencyExitsLeft)
+      ? Math.min(MAX_EXITS, Math.max(0, Math.round(ctx.emergencyExitsLeft))) : 0;
+    if (exitPending) {
+      // A show() after we asked means the gate refused (or could not write the use): say so, once.
+      exitPending = false;
+      exitNote = "Couldn't use the exit. Try again in a moment.";
+      clearTimeout(exitNoteTimer);
+      exitNoteTimer = setTimeout(() => { exitNote = ''; const n = document.querySelector('.exit-note'); if (n) n.textContent = ''; }, 6000);
+    }
     const name = typeof ctx.hiddenAppName === 'string' ? ctx.hiddenAppName.slice(0, 60) : '';
     const mine = ++token;
     const same = !!cur && cur.prayer === prayer && cur.layout === layout && cur.reduce === reduce;
@@ -89,6 +196,7 @@
         onDone() { post('gone'); },
       });
       pinRing(lockMs, remainingMs, reduce);
+      buildExit(prayer, exitsLeft, layout);
       if (layout === 'notice') {
         const copy = shield.querySelector('.copy');
         if (copy) {
@@ -112,11 +220,20 @@
 
   // Swift asked to close (the gate confirmed). If the page already started its own
   // "May Allah accept it." fade (the person clicked), it is not started twice.
-  function dismiss() {
+  function dismiss(kind) {
     const block = shield.querySelector('.block');
     const accept = shield.querySelector('.accept');
     const reduce = document.documentElement.classList.contains('reduce');
     if (block && block.classList.contains('is-leaving')) return;
+    if (kind === 'emergency') {
+      // The honest end: a plain fade, no "May Allah accept it." (the prayer counts as missed).
+      exitPending = false;
+      dropExit();
+      if (block) block.classList.add('is-leaving');
+      setTimeout(() => shield.classList.add('is-gone'), 0);
+      setTimeout(() => post('gone'), reduce ? 700 : 900);
+      return;
+    }
     if (block) block.classList.add('is-leaving');
     if (accept) accept.classList.add('is-on');
     setTimeout(() => shield.classList.add('is-gone'), reduce ? 1000 : 250);
@@ -137,12 +254,12 @@
   // These return nothing (evaluateJavaScript cannot carry a Promise back); a failed show is reported by name.
   window.GoPrayBridge = Object.freeze({
     show(ctx) { show(ctx).catch((e) => console.error('show failed', e)); },
-    dismiss() { dismiss(); },
+    dismiss(kind) { dismiss(kind === 'emergency' ? 'emergency' : 'confirmed'); },
     athanStopped() { athanStopped(); },
     violations() { return violations.length; },
   });
 
-  // The only two things the page asks Swift for.
+  // What the page asks Swift for (the footer button posts `emergency` itself, after the hold and the card).
   document.addEventListener('click', (e) => {
     const t = e.target && e.target.closest ? e.target.closest('button') : null;
     if (!t || t.disabled) return;

@@ -3,11 +3,12 @@
 
 import Foundation
 
-/// What the page may ask. Four names, nothing else. Anything else is dropped.
+/// What the page may ask. Five names, nothing else (`emergency` is the fifth and last, v2).
+/// Anything else is dropped.
 enum BridgeMessage: String, CaseIterable, Equatable, Sendable {
-    case ready, prayed, silence, gone
+    case ready, prayed, silence, emergency, gone
 
-    /// The body must be exactly `{ "type": <one of the four> }`. Any other shape,
+    /// The body must be exactly `{ "type": <one of the five> }`. Any other shape,
     /// extra key, wrong type or unknown name is rejected (the caller logs and drops it).
     static func parse(_ body: Any) -> BridgeMessage? {
         guard let dict = body as? [String: Any], dict.count == 1,
@@ -31,6 +32,8 @@ struct BridgePayload: Codable, Equatable, Sendable {
     var reduceMotion: Bool
     var hiddenAppName: String?
     var layout: ShieldLayout
+    /// Exits left this year, clamped 0…5. 0 → the page draws no button.
+    var emergencyExitsLeft: Int
 
     static let maxAppNameLength = 60
 
@@ -43,6 +46,7 @@ struct BridgePayload: Codable, Equatable, Sendable {
         reduceMotion = reduceMotionOverride ?? ctx.reduceMotion
         hiddenAppName = ctx.hiddenAppName.map { String($0.prefix(Self.maxAppNameLength)) }
         self.layout = layout
+        emergencyExitsLeft = min(max(ctx.emergencyExitsLeft, 0), EmergencyExitPolicy.perYear)
     }
 
     /// The JS call. The JSON comes from `JSONEncoder`, never from string pasting.

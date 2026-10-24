@@ -47,9 +47,12 @@ import Testing
     let ws = FakeWorkspace()
     let sched = ManualScheduler()
     let hider: AppHider
+    let ids: Set<String>
     init(ids: Set<String> = ["listed.a", "listed.b"]) {
-        hider = AppHider(workspace: ws, bundleIDs: ids, retryDelay: 0.1, schedule: sched.schedule)
+        self.ids = ids
+        hider = AppHider(workspace: ws, retryDelay: 0.1, schedule: sched.schedule)
     }
+    func start() { hider.start(hiding: ids) }
 }
 
 @MainActor @Suite struct AppHiderTests {
@@ -57,7 +60,7 @@ import Testing
         let f = AppHiderFixture()
         let a = FakeApp("listed.a"), b = FakeApp("listed.b")
         f.ws.runningApps = [a, b]
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         #expect(a.isHidden && b.isHidden)
         #expect(a.hideCalls == 1 && b.hideCalls == 1)   // verified hidden, so no retry
@@ -67,7 +70,7 @@ import Testing
         let f = AppHiderFixture()
         let other = FakeApp("not.listed"), none = FakeApp(nil)
         f.ws.runningApps = [other, none]
-        f.hider.start()
+        f.start()
         f.ws.fire(.didActivate, other)
         f.ws.fire(.didLaunch, none)
         f.sched.runAll()
@@ -80,7 +83,7 @@ import Testing
         f.ws.runningApps = [a]
         var names: [String] = []
         f.hider.onReHide = { names.append($0) }
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         a.isHidden = false                       // he brought it forward
         f.ws.fire(.didActivate, a)
@@ -91,7 +94,7 @@ import Testing
 
     @Test func launchDuringBlockIsHiddenToo() {
         let f = AppHiderFixture()
-        f.hider.start()
+        f.start()
         let b = FakeApp("listed.b", name: "Beta")
         var names: [String] = []
         f.hider.onReHide = { names.append($0) }
@@ -105,7 +108,7 @@ import Testing
         f.ws.runningApps = [FakeApp("listed.a")]
         var fired = 0
         f.hider.onReHide = { _ in fired += 1 }
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         #expect(fired == 0)
     }
@@ -115,7 +118,7 @@ import Testing
         let f = AppHiderFixture()
         let a = FakeApp("listed.a")
         f.ws.runningApps = [a]
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         #expect(a.hideCalls == 1)
     }
@@ -125,7 +128,7 @@ import Testing
         let a = FakeApp("listed.a")
         a.ignoreHides = .max
         f.ws.runningApps = [a]
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         #expect(a.hideCalls == 2)               // first try + one retry, then it moves on
         #expect(!a.isHidden)
@@ -133,7 +136,7 @@ import Testing
 
     @Test func appStillLaunchingIsHiddenOnceItFinishes() {
         let f = AppHiderFixture()
-        f.hider.start()
+        f.start()
         let a = FakeApp("listed.a")
         a.isFinishedLaunching = false
         f.ws.fire(.didLaunch, a)
@@ -146,7 +149,7 @@ import Testing
 
     @Test func launchWaitIsCapped() {
         let f = AppHiderFixture()
-        f.hider.start()
+        f.start()
         let a = FakeApp("listed.a")
         a.isFinishedLaunching = false           // never finishes
         f.ws.fire(.didLaunch, a)
@@ -159,7 +162,7 @@ import Testing
         let a = FakeApp("listed.a")
         a.ignoreHides = 1
         f.ws.runningApps = [a]
-        f.hider.start()
+        f.start()
         f.sched.runAll()
         #expect(a.hideCalls == 2 && a.isHidden)
     }
@@ -168,8 +171,8 @@ import Testing
         let f = AppHiderFixture()
         let a = FakeApp("listed.a")
         f.ws.runningApps = [a]
-        f.hider.start()
-        f.hider.start()
+        f.start()
+        f.start()
         f.sched.runAll()
         #expect(f.ws.observeCount == 1)
         #expect(a.isHidden)
@@ -177,7 +180,7 @@ import Testing
 
     @Test func stopRemovesObserverAndIsSafeTwice() {
         let f = AppHiderFixture()
-        f.hider.start()
+        f.start()
         f.hider.stop()
         f.hider.stop()
         #expect(f.ws.removeCount == 1)
@@ -189,7 +192,7 @@ import Testing
         let a = FakeApp("listed.a")
         a.ignoreHides = .max
         f.ws.runningApps = [a]
-        f.hider.start()                          // schedules a check
+        f.start()                          // schedules a check
         f.hider.stop()
         f.sched.runAll()                         // the pending check must not retry
         #expect(a.hideCalls == 1)
@@ -203,7 +206,7 @@ import Testing
         let f = AppHiderFixture()
         let a = FakeApp("listed.a")
         f.ws.runningApps = [a]
-        f.hider.start(); f.sched.runAll(); f.hider.stop()
+        f.start(); f.sched.runAll(); f.hider.stop()
         #expect(a.isHidden)
     }
 
@@ -211,9 +214,9 @@ import Testing
         let f = AppHiderFixture()
         let a = FakeApp("listed.a")
         f.ws.runningApps = [a]
-        f.hider.start(); f.hider.stop()
+        f.start(); f.hider.stop()
         a.isHidden = false
-        f.hider.start(); f.sched.runAll()
+        f.start(); f.sched.runAll()
         #expect(a.isHidden && f.ws.observeCount == 2)
     }
 
@@ -227,6 +230,44 @@ import Testing
         for id in required { #expect(CodingApps.bundleIDs.contains(id), "missing \(id)") }
         #expect(!CodingApps.bundleIDs.contains("com.ahmedelgazar.gopray"))   // never hides itself
         #expect(!CodingApps.bundleIDs.contains("com.apple.finder"))
+    }
+
+    @Test func defaultsHaveNoDenylistedIdNoDuplicateAndEveryOneIsNamed() {
+        let ids = CodingApps.defaults.map(\.id)
+        #expect(Set(ids).count == ids.count)
+        #expect(Set(ids) == CodingApps.bundleIDs)
+        #expect(ids.allSatisfy(BlockedApps.isBlockable))
+        #expect(CodingApps.defaults.allSatisfy { !$0.name.isEmpty && $0.name.count <= BlockedApps.maxNameLength })
+    }
+
+    @Test func hiderHidesExactlyThePassedSetAndNothingElse() {
+        let f = AppHiderFixture(ids: ["listed.a"])
+        let a = FakeApp("listed.a"), b = FakeApp("listed.b")
+        f.ws.runningApps = [a, b]
+        f.start()
+        #expect(a.hideCalls >= 1 && b.hideCalls == 0)
+    }
+
+    @Test func hiderRefusesADenylistedIdEvenIfPassed() {
+        let f = AppHiderFixture(ids: ["com.apple.finder", "com.ahmedelgazar.gopray", "listed.a"])
+        let finder = FakeApp("com.apple.finder"), me = FakeApp("com.ahmedelgazar.gopray"), a = FakeApp("listed.a")
+        f.ws.runningApps = [finder, me, a]
+        f.start()
+        #expect(finder.hideCalls == 0 && me.hideCalls == 0 && a.hideCalls >= 1)
+        f.ws.fire(.didActivate, finder)
+        #expect(finder.hideCalls == 0)
+    }
+
+    @Test func aNewSetReplacesTheOldOne() {
+        let f = AppHiderFixture(ids: ["listed.a"])
+        let a = FakeApp("listed.a"), b = FakeApp("listed.b")
+        f.ws.runningApps = [a, b]
+        f.start()
+        f.hider.start(hiding: ["listed.b"])
+        #expect(b.hideCalls >= 1)
+        let before = a.hideCalls
+        f.ws.fire(.didActivate, a)
+        #expect(a.hideCalls == before)
     }
 }
 
@@ -268,9 +309,9 @@ struct AppHiderLiveTests {
         defer { calculators().forEach { $0.terminate() } }
 
         var reHidden: [String] = []
-        let hider = AppHider(bundleIDs: ["com.apple.calculator"])
+        let hider = AppHider()
         hider.onReHide = { reHidden.append($0) }
-        hider.start()
+        hider.start(hiding: ["com.apple.calculator"])
         await pump(5) { calculators().first?.isHidden == true }
         #expect(calculators().first?.isHidden == true, "initial hide")
 

@@ -36,9 +36,11 @@ extension WKWebView {
 @MainActor final class SpyDelegate: ShieldDelegate {
     var confirms = 0
     var silences = 0
+    var emergencies = 0
     var onConfirm: (() -> Void)?
     func shieldDidRequestConfirm() { confirms += 1; onConfirm?() }
     func shieldDidRequestSilence() { silences += 1 }
+    func shieldDidRequestEmergencyExit() { emergencies += 1 }
 }
 
 @MainActor enum Fixture {

@@ -99,7 +99,10 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
 
     func show(_ payload: BridgePayload) { run(payload.showScript()) }
     func athanStopped() { run("GoPrayBridge.athanStopped()") }
-    func dismissPage() { run("GoPrayBridge.dismiss()") }
+    /// `.emergency` is a plain fade (no "May Allah accept it."). The argument is one of two fixed strings.
+    func dismissPage(kind: EndKind = .confirmed) {
+        run(kind == .emergency ? "GoPrayBridge.dismiss(\"emergency\")" : "GoPrayBridge.dismiss()")
+    }
 
     /// `done(true)` once the page has painted its scene as a finished frame (`data-state` lived/still).
     func scenePainted(_ done: @escaping @MainActor (Bool) -> Void) {

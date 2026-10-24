@@ -1,5 +1,6 @@
 // AppHider.swift — AppHiding for "Coding apps only" mode. Lane D.
 // Rules (Architecture Plan §C Mode B + spike Q5):
+//  - The list comes from the gate (captured at block start), never from settings (v2).
 //  - HIDE only. Never quit, kill or force anything. No Accessibility.
 //  - `hide()` returns false even when it works, so the return value is ignored.
 //    The truth is `isHidden`, checked later on the run loop (never a blocking poll).
@@ -35,7 +36,8 @@ enum WorkspaceEvent: Sendable { case didActivate, didLaunch }
     var onReHide: ((String) -> Void)?
 
     private let workspace: RunningApps
-    private let bundleIDs: Set<String>
+    /// The set the gate passed to `start(hiding:)`. Never the settings.
+    private var bundleIDs: Set<String> = []
     private let retryDelay: TimeInterval
     private let schedule: @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void
     private var token: AnyObject?
@@ -43,17 +45,17 @@ enum WorkspaceEvent: Sendable { case didActivate, didLaunch }
     private var generation = 0
 
     init(workspace: RunningApps = SystemRunningApps(),
-         bundleIDs: Set<String> = CodingApps.bundleIDs,
          retryDelay: TimeInterval = 0.1,
          schedule: @escaping @MainActor (TimeInterval, @escaping @MainActor () -> Void) -> Void = AppHider.runLoopSchedule) {
         self.workspace = workspace
-        self.bundleIDs = bundleIDs
         self.retryDelay = retryDelay
         self.schedule = schedule
     }
 
     /// Safe to call more than once (block start, and again on a relaunch that resumes a block).
-    func start() {
+    func start(hiding ids: Set<String>) {
+        // Last line of defence: never hide what the denylist protects, whatever the caller passed.
+        bundleIDs = Set(ids.map(BlockedApps.normalize).filter(BlockedApps.isBlockable))
         if token == nil {
             token = workspace.observe { [weak self] event, app in self?.handle(event, app) }
         }

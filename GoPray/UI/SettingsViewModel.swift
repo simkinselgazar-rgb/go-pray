@@ -105,6 +105,9 @@ import Observation
         BindingBox(get: { [store] in store.settings[keyPath: keyPath] }, set: { [weak self] in self?.set(keyPath, to: $0) })
     }
 
+    /// A line from a view-side failure (e.g. the picker could not read an app).
+    func reportNotice(_ text: String) { notice = text }
+
     func setCity(_ match: CityMatch) {
         apply { $0.city = match.label; $0.latitude = match.latitude; $0.longitude = match.longitude }
     }
@@ -123,6 +126,64 @@ import Observation
             do { try loginAgent.unregister() } catch { apply { $0.launchAtLogin = true }; notice = failed }
         }
     }
+
+    // MARK: Blocked apps (v2)
+
+    struct AppRow: Identifiable, Equatable { let id: String; let name: String; var isOn: Bool }
+
+    /// What the picker hands back: a bundle id and a display name.
+    struct PickedApp: Equatable { var id: String; var name: String }
+
+    static let refusalLine = "Go Pray can't rest that one. It's part of macOS."
+    static let duplicateLine = "Already on the list."
+    static let emptyListLine = "Nothing is on the list, so Coding apps mode rests nothing."
+
+    /// Every compiled-in default with its switch, in table order (AI + terminals, editors, browsers).
+    var defaultAppRows: [AppRow] {
+        let off = Set(settings.disabledDefaultApps)
+        return CodingApps.defaults.map { AppRow(id: $0.id, name: $0.name, isOn: !off.contains($0.id)) }
+    }
+
+    /// "Added by you": this platform's custom apps.
+    var customAppRows: [AppRow] {
+        settings.customApps.filter { $0.platform == BlockedApps.current }.map { AppRow(id: $0.id, name: $0.name, isOn: true) }
+    }
+
+    var effectiveAppCount: Int { BlockedApps.effective(settings, defaults: CodingApps.bundleIDs).count }
+
+    func setDefaultApp(_ id: String, on: Bool) {
+        guard CodingApps.bundleIDs.contains(id) else { return }
+        apply { s in
+            s.disabledDefaultApps.removeAll { $0 == id }
+            if !on { s.disabledDefaultApps.append(id) }
+        }
+    }
+
+    /// A picked app. Refused: the never-blockable list ("part of macOS") and duplicates.
+    /// A default that was switched off just comes back on.
+    func addApp(_ app: PickedApp) {
+        let id = BlockedApps.normalize(app.id)
+        guard !id.isEmpty else { notice = GPCopy.invalidLine; return }
+        guard BlockedApps.isBlockable(id) else { notice = Self.refusalLine; return }
+        if CodingApps.bundleIDs.contains(id) {
+            if settings.disabledDefaultApps.contains(id) { setDefaultApp(id, on: true) } else { notice = Self.duplicateLine }
+            return
+        }
+        if settings.customApps.contains(where: { $0.platform == BlockedApps.current && $0.id == id }) {
+            notice = Self.duplicateLine
+            return
+        }
+        apply { $0.customApps.append(CustomApp(id: id, name: app.name, platform: BlockedApps.current)) }
+    }
+
+    func removeCustomApp(_ id: String) {
+        apply { s in s.customApps.removeAll { $0.platform == BlockedApps.current && $0.id == id } }
+    }
+
+    // MARK: Emergency exits (v2)
+
+    /// "3 of 5 emergency exits left this year".
+    var exitsLine: String { EmergencyExitPolicy.line(left: gate.emergencyExitsLeft) }
 
     // MARK: Pause
 

@@ -20,6 +20,8 @@ struct DebugMenu: View {
             }
             .disabled(!env.settingsStore.settings.setupComplete)
             Button("Wipe state (idle only)") { env.gate.debugWipeState() }
+            Button("Emergency exits (debug): use all 5") { env.ledger.debugSetEmergencyExitsUsed(5, now: env.clock.now) }
+            Button("Emergency exits (debug): reset to 5") { env.ledger.debugSetEmergencyExitsUsed(0, now: env.clock.now) }
         }
         .buttonStyle(.borderless)
         .disabled(env.gate.isBlocked)

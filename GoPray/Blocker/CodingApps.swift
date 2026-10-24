@@ -1,6 +1,7 @@
-// CodingApps.swift — the hardcoded list of apps hidden in "Coding apps only" mode.
-// Lane D. A static list inside the signed bundle on purpose (Architecture Plan §C, Mode B):
-// not a user file, so it cannot be edited to dodge a block.
+// CodingApps.swift — the compiled-in DEFAULT list of apps hidden in "Coding apps only" mode.
+// Lane D. v2: the person can turn defaults off and add their own (Settings → Blocked apps), but
+// only between prayers, and the effective list is captured into state.json at block start, so a
+// running block cannot be edited to dodge it (CONTRACT-NOTES #49).
 //
 // Verified with scripts/bundle-ids.sh on 2026-10-22 (Ahmed's Mac). Installed and confirmed:
 //   Claude com.anthropic.claudefordesktop | Terminal com.apple.Terminal | iTerm2 com.googlecode.iterm2
@@ -16,31 +17,36 @@
 import Foundation
 
 enum CodingApps {
-    static let bundleIDs: Set<String> = [
+    /// The compiled-in defaults, in display order (AI + terminals, editors, browsers). The user
+    /// turns these off by id (`Settings.disabledDefaultApps`) and adds their own; nothing is ever
+    /// removed from here because it was disabled.
+    static let defaults: [(id: String, name: String)] = [
         // AI + terminals
-        "com.anthropic.claudefordesktop",   // Claude desktop
-        "com.apple.Terminal",
-        "com.googlecode.iterm2",            // iTerm2
-        "dev.warp.Warp-Stable",             // Warp
-        "com.mitchellh.ghostty",            // Ghostty (UNVERIFIED)
-        "com.openai.codex",                 // Codex (the /Applications/ChatGPT.app on this Mac)
-        "com.openai.chat",                  // ChatGPT desktop (UNVERIFIED)
+        ("com.anthropic.claudefordesktop", "Claude"),
+        ("com.apple.Terminal", "Terminal"),
+        ("com.googlecode.iterm2", "iTerm2"),
+        ("dev.warp.Warp-Stable", "Warp"),
+        ("com.mitchellh.ghostty", "Ghostty"),             // (UNVERIFIED)
+        ("com.openai.codex", "Codex"),                    // the /Applications/ChatGPT.app on this Mac
+        ("com.openai.chat", "ChatGPT"),                   // (UNVERIFIED)
         // Editors
-        "com.todesktop.230313mzl4w4u92",    // Cursor (UNVERIFIED)
-        "com.microsoft.VSCode",
-        "com.microsoft.VSCodeInsiders",     // (UNVERIFIED)
-        "com.exafunction.windsurf",         // Windsurf (UNVERIFIED)
-        "dev.zed.Zed",                      // (UNVERIFIED)
-        "com.apple.dt.Xcode",
+        ("com.todesktop.230313mzl4w4u92", "Cursor"),      // (UNVERIFIED)
+        ("com.microsoft.VSCode", "VS Code"),
+        ("com.microsoft.VSCodeInsiders", "VS Code Insiders"),   // (UNVERIFIED)
+        ("com.exafunction.windsurf", "Windsurf"),         // (UNVERIFIED)
+        ("dev.zed.Zed", "Zed"),                           // (UNVERIFIED)
+        ("com.apple.dt.Xcode", "Xcode"),
         // Browsers
-        "com.google.Chrome",
-        "com.apple.Safari",
-        "company.thebrowser.Browser",       // Arc (UNVERIFIED)
-        "org.mozilla.firefox",              // (UNVERIFIED)
-        "com.brave.Browser",
-        "com.microsoft.edgemac",            // Edge (UNVERIFIED)
-        "company.thebrowser.dia",           // Dia (UNVERIFIED)
-        "com.operasoftware.Opera",          // (UNVERIFIED)
-        "com.vivaldi.Vivaldi",              // (UNVERIFIED)
+        ("com.google.Chrome", "Chrome"),
+        ("com.apple.Safari", "Safari"),
+        ("company.thebrowser.Browser", "Arc"),            // (UNVERIFIED)
+        ("org.mozilla.firefox", "Firefox"),               // (UNVERIFIED)
+        ("com.brave.Browser", "Brave"),
+        ("com.microsoft.edgemac", "Edge"),                // (UNVERIFIED)
+        ("company.thebrowser.dia", "Dia"),                // (UNVERIFIED)
+        ("com.operasoftware.Opera", "Opera"),             // (UNVERIFIED)
+        ("com.vivaldi.Vivaldi", "Vivaldi"),               // (UNVERIFIED)
     ]
+
+    static let bundleIDs: Set<String> = Set(defaults.map(\.id))
 }

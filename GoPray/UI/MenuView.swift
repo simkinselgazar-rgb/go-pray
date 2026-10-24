@@ -12,6 +12,9 @@ struct MenuView: View {
     var openSettings: () -> Void
     var openSetup: () -> Void
     var quit: () -> Void
+    var checkForUpdates: () -> Void = {}
+    var downloadUpdate: () -> Void = {}
+    var openReleases: () -> Void = {}
 
     var body: some View {
         // One tick a second: the lock countdown shows seconds. The snapshot is cheap (cached day times).
@@ -34,7 +37,12 @@ struct MenuView: View {
                 rows(snap)
                 Divider()
                 modeAndPlace(snap)
+                if let line = snap.exitsLine {
+                    Text(line).font(.caption).foregroundStyle(.secondary)
+                        .padding(.horizontal, Spacing.s16).padding(.bottom, Spacing.s12)
+                }
             }
+            if let line = snap.update { updateRow(line) }
             Divider()
             actions(snap)
         }
@@ -113,11 +121,27 @@ struct MenuView: View {
     private func actions(_ snap: MenuSnapshot) -> some View {
         HStack {
             Button("Settings…", action: openSettings)
+            if snap.canCheckForUpdates || snap.update != nil || model.updater != nil {
+                Button("Check for updates…", action: checkForUpdates).disabled(!snap.canCheckForUpdates)
+            }
             Spacer()
             Button("Quit Go Pray", action: quit).disabled(snap.isBlocked)      // the gate refuses it too
         }
         .buttonStyle(.borderless)
         .padding(.horizontal, Spacing.s16).padding(.vertical, Spacing.s12)
+    }
+
+    private func updateRow(_ line: UpdateLine) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(line.text).font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            switch line.action {
+            case .download: Button("Download", action: downloadUpdate).buttonStyle(.link).font(.caption)
+            case .getFromGitHub: Button("Open GitHub", action: openReleases).buttonStyle(.link).font(.caption)
+            case .none: EmptyView()
+            }
+        }
+        .padding(.horizontal, Spacing.s16).padding(.vertical, Spacing.s8)
     }
 
     private func empty(_ text: String, button: String, action: @escaping () -> Void) -> some View {

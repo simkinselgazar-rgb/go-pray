@@ -6,7 +6,8 @@
 //   2. No escape by reflex. Only requestConfirm() after the lock ends a block.
 //
 // Two private exits, both in this file:
-//   endBlock()  — the confirmed end. Exactly one caller: requestConfirm().
+//   endBlock(_ kind) — a deliberate end. Exactly two callers: requestConfirm() (confirmed, after the
+//                 lock) and requestEmergencyExit() (one of the yearly exits; v2, recorded as dropped).
 //   failOpen()  — a §G fail-open rule (window closed, next Athan, crash loop,
 //                 no schedule). Never reachable from the shield, the menu or
 //                 a page message.
@@ -38,6 +39,10 @@ import os
     @ObservationIgnored private let shield: ShieldPresenting
     @ObservationIgnored private let audio: AthanPlaying
     @ObservationIgnored private let hider: AppHiding
+    @ObservationIgnored private let ledger: EmergencyLedger
+    /// The compiled-in defaults (Mac wiring passes `CodingApps.bundleIDs`). The effective list is
+    /// computed from them and the settings ONCE, at block start.
+    @ObservationIgnored private let defaultApps: Set<String>
     @ObservationIgnored private let settings: @MainActor () -> Settings
     @ObservationIgnored private let systemReduceMotion: @MainActor () -> Bool
     @ObservationIgnored private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "gate")
@@ -60,7 +65,8 @@ import os
     @ObservationIgnored private var lastSeen: (setupComplete: Bool, paused: Bool)
 
     init(clock: Clock, store: StateStore, schedule: PrayerScheduleProviding, shield: ShieldPresenting,
-         audio: AthanPlaying, hider: AppHiding, settings: @escaping @MainActor () -> Settings,
+         audio: AthanPlaying, hider: AppHiding, ledger: EmergencyLedger, defaultApps: Set<String>,
+         settings: @escaping @MainActor () -> Settings,
          leavingTimeout: Duration = .seconds(4),
          systemReduceMotion: @escaping @MainActor () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }) {
         self.clock = clock
@@ -69,6 +75,8 @@ import os
         self.shield = shield
         self.audio = audio
         self.hider = hider
+        self.ledger = ledger
+        self.defaultApps = defaultApps
         self.settings = settings
         self.leavingTimeout = leavingTimeout
         self.systemReduceMotion = systemReduceMotion
@@ -99,6 +107,9 @@ import os
     }
 
     var isBlocked: Bool { phase != .idle }
+
+    /// Exits left this calendar year (the menu line). Not blocked-specific.
+    var emergencyExitsLeft: Int { ledger.remaining(at: clock.now) }
     var currentBlock: BlockStateFile.Block? { state.block }
 
     func shouldAllowQuit() -> Bool { !isBlocked }
@@ -123,7 +134,8 @@ import os
                              athanRemainingMs: audio.isPlaying ? max(0, audio.remainingMs()) : 0,
                              reduceMotion: s.reduceMotion ?? systemReduceMotion(),
                              hiddenAppName: hiddenAppName,
-                             blockStartedAt: b.blockStartedAt, lockSeconds: Int(Self.lock(of: b)))
+                             blockStartedAt: b.blockStartedAt, lockSeconds: Int(Self.lock(of: b)),
+                             emergencyExitsLeft: b.emergencyExitsEnabled ? ledger.remaining(at: clock.now) : 0)
     }
 
     // MARK: Inputs
@@ -185,10 +197,32 @@ import os
         startBlock(prayer: w.prayer, athanAt: w.athan, now: now, lockSeconds: LockPolicy.seconds(forMinutes: s.lockMinutes))
     }
 
-    /// The ONLY path that ends a block. False while locked (or idle).
+    /// "I prayed": allowed only once the lock is over. False while locked (or idle).
     @discardableResult func requestConfirm() -> Bool {
         guard phase == .canConfirm else { return false }
-        endBlock()
+        endBlock(.confirmed)
+        return true
+    }
+
+    /// One of the yearly emergency exits (PM amendment §9). The SECOND and LAST caller of
+    /// endBlock. Allowed while locked and while canConfirm; refused when idle or leaving, when
+    /// this block was started with exits off, when none are left, or when the use cannot be
+    /// written (the person is never trapped: the normal lock path is untouched). The ledger write
+    /// comes first; the block ends right after it with no work in between.
+    @discardableResult func requestEmergencyExit() -> Bool {
+        guard let b = state.block, b.emergencyExitsEnabled else { return false }
+        switch phase {
+        case .locked, .canConfirm: break
+        case .idle, .leaving: return false
+        }
+        let now = clock.now
+        guard ledger.remaining(at: now) > 0 else { return false }
+        do { try ledger.recordUse(.init(prayer: b.prayer, athanAt: b.athanAt, at: now), now: now) }
+        catch {
+            log.error("emergency exit refused: ledger write failed")
+            return false
+        }
+        endBlock(.emergency)
         return true
     }
 
@@ -288,8 +322,11 @@ import os
             leavingToken = nil
             shield.tearDown()
         }
+        let s = settings()
         state.block = .init(prayer: prayer, athanAt: athanAt, blockStartedAt: now, silenced: false, athanPlayed: true,
-                            lockSeconds: lockSeconds)   // captured: later settings changes cannot touch it
+                            lockSeconds: lockSeconds,   // captured: later settings changes cannot touch it
+                            hiddenApps: BlockedApps.effective(s, defaults: defaultApps).sorted(),
+                            emergencyExitsEnabled: s.emergencyExitsEnabled)
         state.launches = []
         persist()                         // on disk BEFORE the shield goes up
         log.notice("block start \(prayer.rawValue, privacy: .public)")
@@ -299,7 +336,7 @@ import os
     private func present(freshAthan: Bool) {
         let s = settings()
         presented = true
-        if s.mode == .codingApps { hider.start() }
+        if s.mode == .codingApps { hider.start(hiding: capturedApps()) }
         if freshAthan, let b = state.block, !b.silenced {
             do { try audio.play(prayer: b.prayer, voice: s.voice, volume: s.athanVolume) }
             catch { log.error("athan play failed: \(error.localizedDescription, privacy: .public)") }
@@ -307,13 +344,28 @@ import os
         shield.show(shieldContext()!)
     }
 
-    private func endBlock() {
+    /// The block's captured list, denylist and cap applied on read. A 0.1.x file (no list) gets the
+    /// list computed from today's settings once, and it is written back.
+    private func capturedApps() -> Set<String> {
+        guard var b = state.block else { return [] }
+        if let ids = b.hiddenApps { return BlockedApps.sanitizeCaptured(ids) }
+        let ids = BlockedApps.effective(settings(), defaults: defaultApps)
+        b.hiddenApps = ids.sorted()
+        state.block = b
+        persist()
+        return ids
+    }
+
+    private func endBlock(_ kind: EndKind) {
         guard let b = state.block else { return }
-        state.lastConfirmed = .init(prayer: b.prayer, athanAt: b.athanAt)
+        switch kind {
+        case .confirmed: state.lastConfirmed = .init(prayer: b.prayer, athanAt: b.athanAt)
+        case .emergency: state.lastDropped = .init(prayer: b.prayer, athanAt: b.athanAt)   // missed, never "prayed"
+        }
         state.block = nil
         state.launches = []
         persist()
-        log.notice("block confirmed \(b.prayer.rawValue, privacy: .public)")
+        log.notice("block ended (\(kind == .confirmed ? "confirmed" : "emergency", privacy: .public)) \(b.prayer.rawValue, privacy: .public)")
         audio.stop()
         hider.stop()
         presented = false
@@ -321,7 +373,7 @@ import os
         tokenCounter += 1
         let token = tokenCounter
         leavingToken = token
-        shield.dismiss { [weak self] in self?.finishLeaving(token) }
+        shield.dismiss(kind: kind) { [weak self] in self?.finishLeaving(token) }
         // Fail open: a dismiss that never calls back cannot keep us "blocked".
         let timeout = leavingTimeout
         Task { @MainActor [weak self] in
@@ -399,4 +451,9 @@ extension BlockGate: ShieldDelegate {
     }
 
     func shieldDidRequestSilence() { requestSilence() }
+
+    func shieldDidRequestEmergencyExit() {
+        // Refused → re-sync the page with the true count (and its own "couldn't" line).
+        if !requestEmergencyExit(), let ctx = shieldContext() { shield.update(ctx) }
+    }
 }

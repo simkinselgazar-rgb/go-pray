@@ -19,12 +19,16 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
     let hider: AppHiding
     let loginAgent: LoginAgentManaging
     let geocoder: CityGeocoding
+    let ledger: EmergencyLedger
     let gate: BlockGate
     let scheduler: Scheduler
+    /// The update check (v2 §8). Created by `start()`, so only the live app has one.
+    private(set) var updater: UpdateChecker?
 
     init(clock: Clock, store: StateStore, settingsStore: SettingsStore, schedule: PrayerScheduleProviding,
          shield: ShieldPresenting, audio: AthanPlaying, hider: AppHiding, loginAgent: LoginAgentManaging,
-         geocoder: CityGeocoding) {
+         geocoder: CityGeocoding, ledger: EmergencyLedger = EmergencyLedger(),
+         defaultApps: Set<String> = CodingApps.bundleIDs) {
         self.clock = clock
         self.store = store
         self.settingsStore = settingsStore
@@ -34,8 +38,10 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
         self.hider = hider
         self.loginAgent = loginAgent
         self.geocoder = geocoder
+        self.ledger = ledger
         let gate = BlockGate(clock: clock, store: store, schedule: schedule, shield: shield,
-                             audio: audio, hider: hider, settings: { settingsStore.settings })
+                             audio: audio, hider: hider, ledger: ledger, defaultApps: defaultApps,
+                             settings: { settingsStore.settings })
         self.gate = gate
         settingsStore.attach(gate)                 // fail closed until this line: the store refuses everything
         let scheduler = Scheduler(clock: clock, schedule: schedule, gate: gate, settings: { settingsStore.settings })
@@ -59,14 +65,21 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
                               schedule: PrayerSchedule(settings: { settingsStore.settings }),
                               shield: ShieldController(),
                               audio: AthanPlayer(),
-                              hider: AppHider(bundleIDs: hidden),
+                              hider: AppHider(),
                               loginAgent: LoginAgent(),
-                              geocoder: Geocoder())
+                              geocoder: Geocoder(),
+                              ledger: EmergencyLedger(),
+                              defaultApps: hidden)
     }
 
     func start() {
         gate.reevaluate(.launch)      // resume / wake rule / fail-open checks
         scheduler.start()
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
+        let updater = UpdateChecker(currentVersion: version, isBlocked: { [gate] in gate.isBlocked },
+                                    automatic: { [settingsStore] in settingsStore.settings.checkForUpdates }, clock: clock)
+        self.updater = updater
+        updater.start()
     }
 }
 
@@ -146,6 +159,7 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
             MainActor.assumeIsolated { self?.showRequested() }
         }
         env.start()
+        menuModel?.updater = env.updater
         // After an upgrade or a move the agent registration can be gone; put it back if the
         // person chose it (only after setup: before that the default is not their choice).
         let s = env.settingsStore.settings
@@ -216,7 +230,10 @@ private struct MenuContent: View {
                      still: { AnyView(SceneStill(prayer: $0)) },
                      openSettings: { closePopover(); windows.showSettings(env) },
                      openSetup: { closePopover(); windows.showSetup(env) },
-                     quit: { NSApp.terminate(nil) })   // the gate refuses it while blocked
+                     quit: { NSApp.terminate(nil) },   // the gate refuses it while blocked
+                     checkForUpdates: { Task { await env.updater?.checkNow() } },
+                     downloadUpdate: { Task { await env.updater?.downloadAndOpen() } },
+                     openReleases: { env.updater?.openReleasesPage() })
             #if DEBUG
             Divider()
             DebugMenu(env: env).padding(.horizontal, 16).padding(.vertical, 10)

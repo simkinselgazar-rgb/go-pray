@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.1.1/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.2.0/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
   <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.1.0/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
 </p>
 
@@ -54,6 +54,12 @@
 When the Athan comes in, Go Pray plays it and covers the screen with a painting of that prayer's sky. A ring counts down your break. When the ring is full, you press **I prayed**, you see "May Allah accept it.", and your work is right where you left it.
 
 Free and open source. No account, no tracking, no network after setup.
+
+## New in 0.2
+
+- **Choose your blocked apps.** In Settings → Blocked apps, switch off any default app or add your own. Changes only happen between prayers.
+- **Emergency exits.** Five a year, for real emergencies: press and hold, then confirm. That prayer is recorded as skipped, not prayed. You can turn exits off completely in Settings.
+- **Updates.** Go Pray checks GitHub once a day and tells you when a new version is out. The download is checked for the developer's signature before it opens. You can turn this off.
 
 ## A look around
 

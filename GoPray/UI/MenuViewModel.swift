@@ -33,6 +33,26 @@ struct MenuSnapshot: Equatable {
     var mode: BlockMode
     var footer: String
     var isBlocked: Bool
+    /// "Emergency exits: 3 of 5 left this year"; nil while blocked.
+    var exitsLine: String?
+    /// The update row (v2 §8): nil when there is nothing to say.
+    var update: UpdateLine?
+    /// "Check for updates…" is disabled while blocked or while a check or download runs.
+    var canCheckForUpdates = false
+}
+
+struct UpdateLine: Equatable {
+    enum Action: Equatable { case none, download, getFromGitHub }
+    var text: String
+    var action: Action
+}
+
+extension EmergencyExitPolicy {
+    /// The one wording, for the menu and Settings.
+    static func line(left: Int) -> String {
+        left <= 0 ? "Emergency exits: none left until 1 January" : "Emergency exits: \(left) of \(total) left this year"
+    }
+    static let offLine = "Emergency exits: off"
 }
 
 @MainActor final class MenuViewModel {
@@ -41,6 +61,8 @@ struct MenuSnapshot: Equatable {
     let schedule: PrayerScheduleProviding
     let clock: Clock
     private let calendar: @MainActor () -> Calendar
+    /// Set by the app wiring; nil in most tests.
+    var updater: UpdateChecker?
 
     init(store: SettingsStore, gate: BlockGate, schedule: PrayerScheduleProviding, clock: Clock,
          calendar: @escaping @MainActor () -> Calendar = { Calendar.autoupdatingCurrent }) {
@@ -56,7 +78,10 @@ struct MenuSnapshot: Equatable {
     func snapshot(at now: Date) -> MenuSnapshot {
         let s = store.settings
         var snap = MenuSnapshot(status: .ready, mode: s.mode, footer: footer(for: s), isBlocked: gate.isBlocked)
+        snap.update = updater.flatMap(Self.updateLine)
+        snap.canCheckForUpdates = updater != nil && !snap.isBlocked && ![.checking, .downloading].contains(updater?.status)
         guard s.setupComplete else { snap.status = .needsSetup; return snap }
+        if !snap.isBlocked { snap.exitsLine = s.emergencyExitsEnabled ? EmergencyExitPolicy.line(left: gate.emergencyExitsLeft) : EmergencyExitPolicy.offLine }
 
         if s.isPaused(at: now), let until = s.pausedUntil {
             snap.pausedLine = until == .distantFuture ? "Paused until you resume" : "Paused until \(TimeText.day(until))"
@@ -88,6 +113,20 @@ struct MenuSnapshot: Equatable {
                              isPast: p.at <= now)
         }
         return snap
+    }
+
+    static func updateLine(_ u: UpdateChecker) -> UpdateLine? {
+        switch u.status {
+        case .idle: return nil
+        case .checking: return UpdateLine(text: "Checking…", action: .none)
+        case .upToDate: return UpdateLine(text: "You're up to date.", action: .none)
+        case .downloading: return UpdateLine(text: "Downloading…", action: .none)
+        case .available(let v):
+            return u.isHomebrewInstall ? UpdateLine(text: "Update available: \(v). \(UpdateChecker.brewLine)", action: .none)
+                                       : UpdateLine(text: "Update available: \(v)", action: .download)
+        case .failed(let msg):
+            return UpdateLine(text: msg, action: msg == UpdateChecker.couldntVerify ? .getFromGitHub : .none)
+        }
     }
 
     /// "Toronto · ISNA · Standard"
