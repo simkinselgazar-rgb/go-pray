@@ -6,7 +6,7 @@ Ahmed, real keyboard, `GoPray.exe --debug-shield --lock 10 --cap 15` (DEBUG harn
 - **Ctrl+Alt+Del showed the security screen.** "Cancel" and "Task Manager" both returned to the shield:
   Task Manager starts, but under the topmost shield, which takes the foreground back. Lock, sign out and
   switch user from that screen still work (never trapped). Stricter than PLAN §6, which accepted
-  "Ctrl+Alt+Del → Task Manager → End task" as a bypass: **PM decision needed** (keep, or let Task Manager come forward).
+  "Ctrl+Alt+Del → Task Manager → End task" as a bypass. **PM ruling 2026-10-23: keep it.** Task Manager is not a bypass during whole-screen blocks (by design); sign-out is. PLAN.md §6 updated.
 
 Two monitors (Ahmed added a 2560x1440 screen to the left of the 1920x1080 @125% laptop; mixed scale, negative
 coordinates), `two-monitors.log`:

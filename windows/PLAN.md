@@ -137,8 +137,8 @@ windows/
 | Ctrl+Shift+Esc (Task Manager) | swallowed | allowed; Task Manager is not on the list | built in / n/a |
 | Alt+F4 on the shield | `Closing` cancelled | same on the notice | built in |
 | Taskbar / Start by mouse | covered; re-assert if it peeks | n/a | spike measures |
-| **Ctrl+Alt+Del → Task Manager → End task** | works; relaunch ≤ 60 s **if** Task Scheduler restart fires (UNKNOWN), block resumes with the original timer | same | accepted (decision 1) |
-| Ctrl+Alt+Del → Lock / Sign out / Switch user, Win+L, power | works | works | **allowed on purpose** (walking away) |
+| **Ctrl+Alt+Del → Task Manager → End task** | **NOT a bypass during a whole-screen block (by design, PM ruling 2026-10-23):** Task Manager starts but stays under the topmost shield, which takes the foreground back (Ahmed, real keyboard, 2026-10-23). Lock / sign out / switch user from the same screen still work, and the lock is capped at 30 min from block start, so he is never trapped. Matches the Mac (Cmd-Opt-Esc blocked). | works (coding-apps mode never covers Task Manager); End task → relaunch in ≤ 60 s via the every-minute task trigger (measured 24 s / 42 s), block resumes with the original timer | whole screen: blocked by design; coding apps: accepted (decision 1) |
+| Ctrl+Alt+Del → Lock / Sign out / Switch user, Win+L, power | works (verified by hand 2026-10-23: Win+L locks, Ctrl+Alt+Del shows the security screen) | works | **allowed on purpose** (walking away; sign-out is the way out, not Task Manager) |
 | Second user account | not blocked; our task is per user | same | no |
 | Safe Mode | logon tasks do not run; nothing blocks | same | accepted (admin) |
 | Settings → Apps → Startup, or Task Scheduler → disable the task | works | works | accepted (= Login Items toggle) |
