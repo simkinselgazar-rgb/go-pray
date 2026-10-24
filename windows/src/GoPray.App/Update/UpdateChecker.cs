@@ -132,10 +132,12 @@ internal sealed class UpdateChecker
         finally { _one.Release(); }
     }
 
-    /// <summary>The "Update available: Download" click. Verify or delete; then run the installer and quit.</summary>
+    /// <summary>The "Update available: Download" click. Verify or delete; then run the installer and quit.
+    /// The offer comes from update.json, which is persisted state and so not trusted: the one URL we would ever
+    /// fetch is rebuilt from the pinned repo, the tag and the asset name, and a stored offer that differs is refused.</summary>
     public async Task DownloadAndOpen()
     {
-        if (Latest is not { } r || _isBlocked()) return;
+        if (Status != UpdateStatus.Available || _isBlocked() || StoredOffer() is not { } r) return;
         if (!await _one.WaitAsync(0)) return;
         string? setup = null;
         try
@@ -193,7 +195,7 @@ internal sealed class UpdateChecker
             if (Bool(rel, "draft") || Bool(rel, "prerelease")) continue;
             if (!rel.TryGetProperty("tag_name", out var t) || t.ValueKind != JsonValueKind.String) continue;
             var tag = t.GetString()!;
-            if (ParseTag(tag) is not { } v || v <= current || (best != null && v <= best.Version)) continue;
+            if (ParseTag(tag) is not { } v || v <= current || (best != null && v <= best.Version)) continue;   // ParseTag: canonical only
             var name = $"GoPray-Setup-{v.ToString(3)}.exe";
             Uri? setup = null, sha = null;
             long size = 0;
@@ -211,13 +213,41 @@ internal sealed class UpdateChecker
         return best;
     }
 
-    /// <summary>"win-v0.2.0" → 0.2.0. Anything else (no prefix, "-beta", four parts) → null.</summary>
+    /// <summary>"win-v0.2.0" → 0.2.0. Anything else (no prefix, "-beta", four parts, a non-canonical "win-v01.2.0") → null.</summary>
     internal static Version? ParseTag(string tag)
     {
         if (!tag.StartsWith(TagPrefix, StringComparison.Ordinal)) return null;
         var parts = tag[TagPrefix.Length..].Split('.');
         if (parts.Length != 3 || !parts.All(p => p.Length is > 0 and <= 6 && p.All(char.IsAsciiDigit))) return null;
-        return new Version(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
+        var v = new Version(int.Parse(parts[0]), int.Parse(parts[1]), int.Parse(parts[2]));
+        return tag == TagPrefix + v.ToString(3) ? v : null;      // only canonical tags are ever offered
+    }
+
+    /// <summary>The exact asset URL for a version: the only URL the checker ever downloads.</summary>
+    internal static string ExpectedSetupUrl(Version v) => DownloadPrefix + TagPrefix + v.ToString(3) + "/GoPray-Setup-" + v.ToString(3) + ".exe";
+
+    /// <summary>update.json's offer, re-validated: canonical tag, strictly newer, size in range, URL exactly rebuilt.</summary>
+    internal UpdateRelease? StoredOffer()
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(File.ReadAllBytes(MemoryFile));
+            var r = doc.RootElement;
+            if (r.GetProperty("schemaVersion").GetInt32() != 1 || r.GetProperty("latest") is not { ValueKind: JsonValueKind.Object } o) return null;
+            var tag = o.GetProperty("tag").GetString() ?? "";
+            var ver = o.GetProperty("version").GetString() ?? "";
+            var url = o.GetProperty("assetURL").GetString() ?? "";
+            long size = o.GetProperty("size").GetInt64();
+            if (ParseTag(tag) is not { } v || v.ToString(3) != ver || v <= _current || size <= 0 || size > MaxBytes) return null;
+            var expected = ExpectedSetupUrl(v);
+            if (url != expected)
+            {
+                CoreLog.Error("stored update offer does not match the pinned URL, ignored");
+                return null;
+            }
+            return new UpdateRelease(tag, v, new Uri(expected), new Uri(expected + ".sha256"), size);
+        }
+        catch (Exception) { return null; }        // missing, corrupt or wrong types: no offer
     }
 
     /// <summary>The URL must be exactly our repo's download path for this tag and asset.</summary>

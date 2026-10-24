@@ -175,6 +175,49 @@ public class V2AppTests : IDisposable
         Assert.False(v.Verify(f, sha));                           // right hash, no Authenticode signature
     }
 
+    [Fact]
+    public void theVersionLineComesFromTheBuildNotFromText()
+    {
+        Assert.Equal("0.2.0", UI.AppVersion.Clean("0.2.0+6dc13d1d9620cea87f5629cbd5a10014b8aeef25"));
+        Assert.Equal("0.0.0", UI.AppVersion.Clean(null));
+        Assert.Equal("Go Pray 0.2.0", UI.AppVersion.Line);                     // <Version> in GoPray.App.csproj
+        Assert.Equal(new Version(0, 2, 0, 0), typeof(UpdateChecker).Assembly.GetName().Version);   // what the checker compares
+    }
+
+    [Fact]
+    public void onlyCanonicalTagsAreOffered()
+    {
+        Assert.Null(UpdateChecker.ParseTag("win-v01.2.0"));
+        Assert.Null(UpdateChecker.ParseTag("win-v0.2.00"));
+        Assert.Equal(new Version(0, 2, 0), UpdateChecker.ParseTag("win-v0.2.0"));
+        var json = "[" + Release("win-v01.2.0").Replace("GoPray-Setup-01.2.0", "GoPray-Setup-1.2.0") + "]";
+        Assert.Null(UpdateChecker.Pick(json, new Version(0, 1, 0)));
+    }
+
+    [Theory]
+    [InlineData("tag", "win-v0.3.0")]                                                        // tag and version disagree
+    [InlineData("tag", "win-v00.2.0")]                                                       // non-canonical tag
+    [InlineData("assetURL", "https://evil.example/GoPray-Setup-0.2.0.exe")]                  // another host
+    [InlineData("assetURL", "https://github.com/someone/go-pray/releases/download/win-v0.2.0/GoPray-Setup-0.2.0.exe")]   // another repo
+    [InlineData("size", "0")]                                                                // empty
+    [InlineData("version", "0.1.0")]                                                         // not newer
+    public async Task aTamperedStoredOfferIsRefused(string key, string value)
+    {
+        var t = new FakeTransport { Releases = ReleasesJson };
+        var runs = new List<string>();
+        var u = Checker(t, new FakeVerifier(true), runs: runs);
+        await u.CheckNow();
+        Assert.NotNull(u.StoredOffer());                                       // the honest offer is accepted
+        var doc = System.Text.Json.Nodes.JsonNode.Parse(File.ReadAllText(u.MemoryFile))!;
+        doc["latest"]![key] = key == "size" ? System.Text.Json.Nodes.JsonValue.Create(long.Parse(value)) : System.Text.Json.Nodes.JsonValue.Create(value);
+        if (key == "version") doc["latest"]!["tag"] = "win-v" + value;
+        File.WriteAllText(u.MemoryFile, doc.ToJsonString());
+        Assert.Null(u.StoredOffer());
+        await u.DownloadAndOpen();
+        Assert.Empty(t.Downloads);
+        Assert.Empty(runs);
+    }
+
     /// <summary>Live check against a real signed installer, when one is named (local only: CI has none).
     /// GOPRAY_TEST_SIGNED_SETUP=<path to GoPray-Setup.exe> GOPRAY_TEST_SIGNED_SHA=<its sha256></summary>
     [Fact]
@@ -248,9 +291,57 @@ public class V2AppTests : IDisposable
             c.Dismiss(() => idle++, EndKind.Emergency);
             Assert.True(slot.Fallback.Leaving);
             Assert.False(slot.Fallback.Accepting);                // no "May Allah accept it."
-            Assert.True(await Ui.Until(2, () => idle == 1));
-            Assert.True(sw.ElapsedMilliseconds < Ui.Upper(1000));
+            Assert.True(await Ui.Until(3, () => idle == 1));
+            Assert.True(sw.ElapsedMilliseconds < Ui.Upper(2000));
             Assert.False(c.IsPresenting);
+        }
+        finally { c.TearDown(); }
+    });
+
+    [Fact]
+    public void aRefusedFallbackRequestShowsTheNote() => Ui.Run(async () =>
+    {
+        var m = new FallbackModel(Ctx(1));
+        var v = new NativeFallbackShield(m);
+        m.RequestEmergency();
+        m.Apply(Ctx(0));                                          // the gate said no (e.g. the write failed) and re-synced
+        Assert.True(v.ShowingExitNote);
+        Assert.Equal("Couldn't use the exit. Try again in a moment.", v.ExitText);
+        await Task.CompletedTask;
+    });
+
+    /// <summary>The Mac lane's bridge.js on the real page: the footer, the 3 s hold, the card, one `emergency`,
+    /// the refusal note, and the plain fade with no accept line.</summary>
+    [Fact]
+    public void thePagesHoldCardAndPlainFadeWorkEndToEnd() => Ui.Run(async () =>
+    {
+        var spy = new SpyDelegate();
+        var c = Fixture.Controller();
+        c.Delegate = spy;
+        try
+        {
+            c.Show(Ctx(3));
+            var web = c.Slots[0].Web!;
+            Assert.True(await Ui.Until(4, () => c.Slots[0].Ready));
+            Assert.True(await Ui.UntilAsync(2, () => Fixture.BlockBuilt(web)));
+            Assert.True(await Ui.UntilAsync(2, async () => await Fixture.Text(web, "document.querySelector('.exit-label')?.textContent ?? ''") == "Emergency exit · 3 of 5 left this year"));
+            await web.Js("document.querySelector('.exit-btn').dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }))");
+            await Task.Delay(1000);
+            await web.Js("document.querySelector('.exit-btn').dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }))");   // released early
+            await Task.Delay(2500);
+            Assert.Equal("none", await Fixture.Text(web, "document.querySelector('.exit-card') ? 'card' : 'none'"));
+            await web.Js("document.querySelector('.exit-btn').dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }))");
+            Assert.True(await Ui.UntilAsync(5, async () => await Fixture.Text(web, "document.querySelector('.exit-card') ? 'card' : 'none'") == "card"));
+            Assert.Equal(0, spy.Emergencies);
+            await web.Js("document.querySelector('.exit-yes').click()");
+            Assert.True(await Ui.Until(2, () => spy.Emergencies == 1));
+            c.Update(Ctx(3, 290_000));                            // the gate refused: re-sync
+            Assert.True(await Ui.UntilAsync(2, async () => (await Fixture.Text(web, "document.querySelector('.exit-note')?.textContent ?? ''")).StartsWith("Couldn't use the exit")));
+            int idle = 0;
+            c.Dismiss(() => idle++, EndKind.Emergency);
+            await Task.Delay(300);
+            Assert.Equal("false", await Fixture.Text(web, "String(!!document.querySelector('.accept.is-on'))"));   // no "May Allah accept it."
+            Assert.True(await Ui.Until(3, () => idle == 1));      // `gone` after the plain fade
         }
         finally { c.TearDown(); }
     });

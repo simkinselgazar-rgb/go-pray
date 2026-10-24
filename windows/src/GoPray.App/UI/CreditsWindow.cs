@@ -36,6 +36,9 @@ internal sealed class CreditsWindow : Window
         var take = Theme.Help(Credits.TakedownText);
         take.Margin = new Thickness(0, 18, 0, 0);
         p.Children.Add(take);
+        var version = Theme.Help(AppVersion.Line);
+        version.Margin = new Thickness(0, 12, 0, 0);
+        p.Children.Add(version);
         var done = Theme.Button("Done", Close, primary: true);
         done.IsDefault = true;
         done.HorizontalAlignment = HorizontalAlignment.Right;

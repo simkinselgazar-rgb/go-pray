@@ -182,7 +182,9 @@ internal sealed class SceneWebView
 
     public void Show(BridgePayload payload) => Run(payload.ShowScript());
     public void AthanStopped() => Run("GoPrayBridge.athanStopped()");
-    public void DismissPage() => Run("GoPrayBridge.dismiss()");
+    /// <summary>Confirmed: "May Allah accept it." then `gone`. Emergency: a plain fade then `gone` (two fixed scripts).</summary>
+    public void DismissPage(EndKind kind = EndKind.Confirmed) =>
+        Run(kind == EndKind.Emergency ? "GoPrayBridge.dismiss(\"emergency\")" : "GoPrayBridge.dismiss(\"confirmed\")");
 
     async void Run(string script)
     {

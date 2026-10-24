@@ -13,9 +13,9 @@
 //   no re-assert (the person keeps working in every other app).
 //
 // v2 emergency exit (PLAN-v2 §2): the page's `emergency` message and the native fallback's "Use it" only become
-// Delegate.ShieldDidRequestEmergencyExit(); the gate decides. Dismiss(kind: Emergency) is a plain close with no
-// "May Allah accept it.". Until bridge.js gains dismiss("emergency") (Mac lane), web slots are closed directly
-// instead of asking the page to fade, because today's page would show the accept line.
+// Delegate.ShieldDidRequestEmergencyExit(); the gate decides. Dismiss(kind: Emergency) asks the page for
+// GoPrayBridge.dismiss("emergency"): a plain fade with no "May Allah accept it.", `gone` after ~0.9 s
+// (Mac CONTRACT-NOTES #54). The native fallback fades plainly too.
 
 using System;
 using System.Collections.Generic;
@@ -145,18 +145,15 @@ internal sealed class ShieldController : IShieldPresenting
         IsDismissing = true;
         _dismissCompletion = thenIdle;
         StopProtecting();    // the block is over: give the keyboard and the foreground back now
-        if (kind == EndKind.Emergency)
-        {
-            // Honest record: no accept line. The fallback goes blank, then everything closes on the next turn.
-            foreach (var slot in Slots) if (slot.Fallback != null) slot.Fallback.Leaving = true;
-            int myEpoch = _epoch;
-            _dismissTimer = After(TimeSpan.FromMilliseconds(150), () => { if (_epoch == myEpoch) FinishDismiss(); });
-            return;
-        }
         foreach (var slot in Slots)
         {
-            if (slot.FellBack) { if (slot.IsMain && slot.Fallback != null) slot.Fallback.Accepting = true; }
-            else slot.Web?.DismissPage();
+            if (slot.FellBack)
+            {
+                if (slot.Fallback == null) continue;
+                if (kind == EndKind.Emergency) slot.Fallback.Leaving = true;               // honest record: no accept line
+                else if (slot.IsMain) slot.Fallback.Accepting = true;
+            }
+            else slot.Web?.DismissPage(kind);
         }
         ArmDismissTimer();
     }
@@ -273,6 +270,7 @@ internal sealed class ShieldController : IShieldPresenting
                 if (IsDismissing && slot.IsMain) FinishDismiss();
                 break;
             case BridgeMessage.Emergency:
+                // The page draws the footer on the full and notice layouts only; an art slot's message is ignored.
                 if (!slot.IsMain || !IsPresenting || IsDismissing) return;
                 slot.NeedsReshow = true;           // a refusal's Update re-syncs the page with the true count
                 Delegate?.ShieldDidRequestEmergencyExit();

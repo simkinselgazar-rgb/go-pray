@@ -183,6 +183,11 @@ internal sealed class SettingsWindow : Window
         var credits = Theme.Link("Credits and thanks", _showCredits);
         credits.Margin = new Thickness(0, Theme.S12, 0, 0);
         general.Children.Add(credits);
+
+        var version = Theme.Help(AppVersion.Line);
+        version.HorizontalAlignment = HorizontalAlignment.Center;
+        version.Margin = new Thickness(0, Theme.S16, 0, Theme.S8);
+        _form.Children.Add(version);
     }
 
     void ChangeCity()

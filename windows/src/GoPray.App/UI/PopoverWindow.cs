@@ -84,6 +84,10 @@ internal sealed class PopoverWindow : Window
         UpdateRow(snap);
         _root.Children.Add(Theme.Divider());
         Actions(snap);
+        var version = Theme.Text(AppVersion.Line, 10, Theme.Secondary, wrap: false);
+        version.HorizontalAlignment = HorizontalAlignment.Center;
+        version.Margin = new Thickness(0, 0, 0, Theme.S8);
+        _root.Children.Add(version);
         if (DebugPanel != null)
         {
             _root.Children.Add(Theme.Divider());

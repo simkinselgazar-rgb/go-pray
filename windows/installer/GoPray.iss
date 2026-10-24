@@ -10,7 +10,7 @@
 ; Built by scripts\build-installer.ps1:  ISCC /DAppVersion=<ver> /DPublishDir=<dir> /DOutDir=<dir> GoPray.iss
 
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.2.0"
 #endif
 #ifndef PublishDir
   #error PublishDir is required (the self-contained publish folder)

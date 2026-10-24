@@ -28,6 +28,18 @@ internal sealed class FallbackModel
     public Action OnPrayed { get; set; } = () => { };
     public Action OnSilence { get; set; } = () => { };
     public Action OnEmergency { get; set; } = () => { };
+    /// <summary>"Couldn't use the exit. Try again in a moment." after a refused request (an Apply that arrives while
+    /// the request is pending means the gate said no), shown for 6 s.</summary>
+    public string? ExitNote { get; private set; }
+    public DateTime? ExitNoteUntil { get; private set; }
+    bool _exitAsked;
+
+    /// <summary>The card's "Use it": one request; the gate answers with Dismiss (yes) or Update (no).</summary>
+    public void RequestEmergency()
+    {
+        _exitAsked = true;
+        OnEmergency();
+    }
     public event Action? Changed;
     bool _accepting, _leaving;
 
@@ -41,6 +53,7 @@ internal sealed class FallbackModel
         AthanEndsAt = ctx.AthanRemainingMs > 0 ? t.AddMilliseconds(ctx.AthanRemainingMs) : null;
         HiddenAppName = ctx.HiddenAppName;
         EmergencyExitsLeft = Math.Clamp(ctx.EmergencyExitsLeft, 0, EmergencyExitPolicy.Total);
+        if (_exitAsked) { _exitAsked = false; ExitNote = Copy.EmergencyFailed; ExitNoteUntil = t.AddSeconds(6); }
         Changed?.Invoke();
     }
 
@@ -89,7 +102,7 @@ internal sealed class NativeFallbackShield : Grid
         _exit.LostMouseCapture += (_, _) => CancelHold();
         _hold.Tick += (_, _) => HoldTick();
         _notNow.Click += (_, _) => CloseCard();
-        _useIt.Click += (_, _) => { CloseCard(); _m.OnEmergency(); };
+        _useIt.Click += (_, _) => { CloseCard(); _m.RequestEmergency(); };
         var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Center };
         buttons.Children.Add(_notNow);
         buttons.Children.Add(_useIt);
@@ -111,11 +124,12 @@ internal sealed class NativeFallbackShield : Grid
     internal string ExitText => _exitLabel.Text;
     internal bool CardOpen => _card.Visibility == Visibility.Visible;
     internal string CardBody => _cardBody.Text;
+    internal bool ShowingExitNote => _m.ExitNote != null && _m.ExitNoteUntil > DateTime.UtcNow;
 
     // Also the test seams for the hold (the real path is the mouse handlers above).
     internal void BeginHold()
     {
-        if (!ExitVisible || CardOpen) return;
+        if (!ExitVisible || CardOpen || _m.EmergencyExitsLeft <= 0) return;
         _holdStart = DateTime.UtcNow;
         _exitLabel.Text = Copy.EmergencyHolding;
         _hold.Start();
@@ -181,7 +195,9 @@ internal sealed class NativeFallbackShield : Grid
         bool showExit = _m.EmergencyExitsLeft > 0 && !_m.Accepting && !_m.Leaving;
         _exit.Visibility = showExit ? Visibility.Visible : Visibility.Collapsed;
         if (!showExit && CardOpen) { _card.Visibility = Visibility.Collapsed; _stack.Visibility = Visibility.Visible; }
-        if (_holdStart == null) _exitLabel.Text = Copy.EmergencyButton(_m.EmergencyExitsLeft);
+        bool note = _m.ExitNote != null && _m.ExitNoteUntil > DateTime.UtcNow;
+        if (_holdStart == null) _exitLabel.Text = note ? _m.ExitNote! : Copy.EmergencyButton(_m.EmergencyExitsLeft);
+        if (note && !showExit) { _exit.Visibility = Visibility.Visible; }
         var quiet = new SolidColorBrush(Color.FromArgb(153, pal.Text.R, pal.Text.G, pal.Text.B));   // 60 % ink
         _exitLabel.Foreground = quiet;
         _exitBar.Background = quiet;
