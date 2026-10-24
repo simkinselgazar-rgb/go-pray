@@ -184,6 +184,7 @@ public class Phase4Tests
     {
         var spy = new SpyPauser();
         var player = Player(spy);
+        if (NoSoundDevice) { NoDeviceThrowsAndNeverPauses(player, spy); return; }
         player.Play(Prayer.Fajr, VoiceChoices.DefaultVoice, 0f);   // volume 0: silent
         try
         {
@@ -199,6 +200,19 @@ public class Phase4Tests
         Assert.Equal(0, player.RemainingMs());
     });
 
+    /// <summary>The GitHub runner has no sound card. There the real-playback tests check the no-device path
+    /// instead: a clean AthanException (the gate logs it, the block goes on silently) and no media pause.</summary>
+    static bool NoSoundDevice => NAudio.Wave.WaveOut.DeviceCount == 0;
+
+    static void NoDeviceThrowsAndNeverPauses(AthanPlayer player, SpyPauser? spy)
+    {
+        var e = Assert.Throws<AthanException>(() => player.Play(Prayer.Fajr, VoiceChoices.DefaultVoice, 0f));
+        Assert.StartsWith("no audio device", e.Message);
+        Assert.False(player.IsPlaying);
+        Assert.Equal(0, player.RemainingMs());
+        if (spy != null) Assert.Equal(0, spy.Calls);
+    }
+
     [Fact]
     public void aMissingFileThrowsAndNeverPauses()
     {
@@ -211,6 +225,7 @@ public class Phase4Tests
     public void stopNeverCallsOnFinished() => Ui.Run(async () =>
     {
         var player = Player();
+        if (NoSoundDevice) { NoDeviceThrowsAndNeverPauses(Player(new SpyPauser()), null); return; }
         int finished = 0;
         player.OnFinished = () => finished++;
         player.Play(Prayer.Dhuhr, Voice.Sunni("Hafiz-Murad"), 0f);

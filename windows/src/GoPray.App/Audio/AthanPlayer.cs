@@ -4,6 +4,7 @@
 // - The system volume and mute are never touched: AthanVolume maps to WaveOutEvent.Volume only.
 // - Stop() never calls OnFinished; only a natural end does (the gate handles its own stops).
 // - Other media is paused right before the sound starts, and only if the file opened (a throw never pauses).
+// - No sound device: Play throws AthanException (never pauses); the gate logs it and the block goes on silently.
 
 using System;
 using System.IO;
@@ -55,8 +56,18 @@ internal sealed class AthanPlayer : IAthanPlaying
         catch (Exception) { throw new AthanException("cannot decode " + Path.GetFileName(file)); }
         double offset = StartOffset(prayer);
         if (offset > 0) reader.CurrentTime = TimeSpan.FromSeconds(Math.Min(offset, Math.Max(0, reader.TotalTime.TotalSeconds - 0.1)));
-        var output = new WaveOutEvent { Volume = Math.Clamp(volume, 0f, 1f) };
-        output.Init(reader);
+        WaveOutEvent output;
+        try
+        {
+            output = new WaveOutEvent { Volume = Math.Clamp(volume, 0f, 1f) };
+            output.Init(reader);
+        }
+        catch (NAudio.MmException e)
+        {
+            // No sound device (a PC without one, a cloud test runner): the block goes on silently; the gate logs it.
+            reader.Dispose();
+            throw new AthanException("no audio device: " + e.Result);
+        }
         output.PlaybackStopped += (_, _) => _ui.BeginInvoke(() =>
         {
             if (_out != output) return;            // stopped by us, or an older player
