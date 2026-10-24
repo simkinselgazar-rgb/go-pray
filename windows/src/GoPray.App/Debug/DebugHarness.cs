@@ -34,6 +34,16 @@ internal static class DebugHarness
         try { return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName + (pid == Environment.ProcessId ? " (us)" : ""); } catch (ArgumentException) { return "?"; }
     }
     [System.Runtime.InteropServices.DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+    [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string? title);
+    [System.Runtime.InteropServices.DllImport("user32.dll")] static extern IntPtr WindowFromPoint(Native.Win32.POINT p);
+
+    /// <summary>Who owns the top-level window at a screen point: "GoPray (us)" when the shield covers it.</summary>
+    static string Top(int x, int y)
+    {
+        var h = Native.Win32.GetAncestor(WindowFromPoint(new Native.Win32.POINT { X = x, Y = y }), 2);
+        GetWindowThreadProcessId(h, out uint pid);
+        try { return System.Diagnostics.Process.GetProcessById((int)pid).ProcessName + (pid == Environment.ProcessId ? " (us)" : ""); } catch (ArgumentException) { return "?"; }
+    }
 
     static string Arg(string[] a, string k, string d) { int i = Array.IndexOf(a, k); return i >= 0 && i + 1 < a.Length ? a[i + 1] : d; }
     static double Num(string[] a, string k, double d) => double.TryParse(Arg(a, k, ""), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : d;
@@ -126,6 +136,27 @@ internal static class DebugHarness
             };
             poll.Start();
             At(1.0, () => Log($"foreground after 1 s: {Fg()}"));
+            At(2.0, () =>
+            {
+                // Multi-monitor check: each window against its monitor, and what is on top at each monitor's centre
+                // and at every taskbar (primary Shell_TrayWnd + Shell_SecondaryTrayWnd on the others).
+                foreach (var s in shield.Slots)
+                {
+                    Native.Win32.GetWindowRect(s.Window.Handle, out var r);
+                    var d = s.Display;
+                    Log($"slot {s.Layout} monitor={d.Id} want=({d.X},{d.Y},{d.Width}x{d.Height}) got=({r.Left},{r.Top},{r.Right - r.Left}x{r.Bottom - r.Top}) exact={(r.Left == d.X && r.Top == d.Y && r.Right - r.Left == d.Width && r.Bottom - r.Top == d.Height)} ready={s.Ready}");
+                    Log($"   top window at centre of {d.Id}: {Top(d.X + d.Width / 2, d.Y + d.Height / 2)}");
+                }
+                foreach (var cls in new[] { "Shell_TrayWnd", "Shell_SecondaryTrayWnd" })
+                {
+                    IntPtr bar = IntPtr.Zero;
+                    while ((bar = FindWindowEx(IntPtr.Zero, bar, cls, null)) != IntPtr.Zero)
+                    {
+                        Native.Win32.GetWindowRect(bar, out var b);
+                        Log($"   taskbar {cls} at ({b.Left},{b.Top},{b.Right - b.Left}x{b.Bottom - b.Top}): top window there = {Top((b.Left + b.Right) / 2, (b.Top + b.Bottom) / 2)}");
+                    }
+                }
+            });
             At(Num(a, "--click-early-at", 0), () => Click("early"));
             double crash = Num(a, "--crash-at", 0);
             if (crash > 0) At(crash, async () =>

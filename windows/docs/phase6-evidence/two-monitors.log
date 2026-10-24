@@ -1,0 +1,22 @@
+[  0.134] start prayer=Isha mode=WholeScreen lock=10s cap=14s monitors=2 hookBefore=False
+[  0.162] core: notice block start isha
+[  0.577] shield: keyboard guard installed=True
+[  0.593] triggered: phase=Locked slots=2 layouts=Full,Art hook=True
+[  0.715] phase=Locked presenting=True ready=False,False fallback=False,False hook=True reasserts=0/0
+[  1.079] phase=Locked presenting=True ready=True,True fallback=False,False hook=True reasserts=0/0
+[  1.596] foreground after 1 s: GoPray (us)
+[  2.095] audio after 1.5 s: playing=False remainingMs=0
+[  2.602] slot Full monitor=\\.\DISPLAY1 want=(0,0,1920x1080) got=(0,0,1920x1080) exact=True ready=True
+[  2.604]    top window at centre of \\.\DISPLAY1: GoPray (us)
+[  2.604] slot Art monitor=\\.\DISPLAY2 want=(-2560,-95,2560x1440) got=(-2560,-95,2560x1440) exact=True ready=True
+[  2.604]    top window at centre of \\.\DISPLAY2: GoPray (us)
+[  2.605]    taskbar Shell_TrayWnd at (0,1020,1920x60): top window there = GoPray (us)
+[  2.605]    taskbar Shell_SecondaryTrayWnd at (-2560,1297,2560x48): top window there = GoPray (us)
+[ 10.166] phase=CanConfirm presenting=True ready=True,True fallback=False,False hook=True reasserts=0/0
+[ 11.623] core: notice block confirmed isha
+[ 11.625] shield: keyboard guard removed
+[ 11.627] phase=Leaving presenting=True ready=True,True fallback=False,False hook=False reasserts=0/0
+[ 11.628] after lock: page click "clicked"
+[ 13.009] phase=Idle presenting=False ready= fallback= hook=False reasserts=0/0
+[ 13.010] IDLE: block ended; hook=False keyEventsSeen=0 lastConfirmed=Isha
+[ 14.001] exit 0 after linger 1s; hook=False keyEventsSeen=0 (unchanged = no hook after the block)
