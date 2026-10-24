@@ -128,7 +128,11 @@ struct MenuView: View {
             Button("Quit Go Pray", action: quit).disabled(snap.isBlocked)      // the gate refuses it too
         }
         .buttonStyle(.borderless)
-        .padding(.horizontal, Spacing.s16).padding(.vertical, Spacing.s12)
+        .padding(.horizontal, Spacing.s16).padding(.top, Spacing.s12)
+        .safeAreaInset(edge: .bottom) {
+            Text(AppVersionText.label()).font(.caption2).foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .center).padding(.vertical, Spacing.s8)
+        }
     }
 
     private func updateRow(_ line: UpdateLine) -> some View {

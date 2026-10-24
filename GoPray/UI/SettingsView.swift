@@ -235,6 +235,7 @@ struct SettingsView: View {
             if credits != nil {
                 Button("Credits and thanks") { showCredits = true }.buttonStyle(.link)
             }
+            Text(AppVersionText.label()).font(.caption).foregroundStyle(.secondary)
         }
     }
 

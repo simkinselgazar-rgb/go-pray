@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.2.0/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.2.1/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
   <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.2.0/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
 </p>
 
