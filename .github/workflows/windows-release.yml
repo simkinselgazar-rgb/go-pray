@@ -1,5 +1,5 @@
 # windows-release.yml — the signed Windows installer (windows/docs/signing.md).
-# Kept at windows/ci/ on the `windows` branch; it is live only at .github/workflows/windows-release.yml (main + the tagged commit).
+# Live at .github/workflows/windows-release.yml (main + the tagged commit).
 #
 # Runs ONLY when a tag win-v<version> is pushed (e.g. win-v0.1.0). Never on pull_request: this repo is public
 # and the signing secret must never reach a fork's code. The signing job runs in the GitHub environment
@@ -72,6 +72,7 @@ jobs:
         shell: pwsh
         run: |
           $tools = Join-Path $env:RUNNER_TEMP 'tools'
+          New-Item -ItemType Directory -Force -Path $tools | Out-Null
           function Get-Pkg($id, $ver) {
             $dir = Join-Path $tools "$id.$ver".ToLowerInvariant()
             $zip = "$dir.zip"
