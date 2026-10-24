@@ -31,10 +31,17 @@ function Put([string]$root, [string]$rel, [string]$text) {
     [IO.File]::WriteAllText($p, $text)
 }
 function Edit-File([string]$root, [string]$rel, [string]$old, [string]$new) {
+    # The anchors are written with LF. A CRLF checkout (core.autocrlf=true, as on GitHub's Windows runners) is
+    # matched as LF and written back with CRLF, so the planted change looks like the rest of the file.
     $p = Join-Path $root $rel
-    $c = [IO.File]::ReadAllText($p)
+    $raw = [IO.File]::ReadAllText($p)
+    $crlf = $raw.Contains("`r`n")
+    $c = $raw.Replace("`r`n", "`n")
+    $old = $old.Replace("`r`n", "`n"); $new = $new.Replace("`r`n", "`n")
     if (-not $c.Contains($old)) { throw "selftest setup: '$old' not found in $rel" }
-    [IO.File]::WriteAllText($p, $c.Replace($old, $new))
+    $c = $c.Replace($old, $new)
+    if ($crlf) { $c = $c.Replace("`n", "`r`n") }
+    [IO.File]::WriteAllText($p, $c)
 }
 function Run-Guard([string]$dir, [string[]]$extra = @()) {
     $out = & powershell -NoProfile -ExecutionPolicy Bypass -File $guard -Src $dir @extra 2>&1 | Out-String

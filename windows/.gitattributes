@@ -1,0 +1,7 @@
+# Every text file under windows/ is checked out with LF, whatever core.autocrlf says. GitHub's Windows runners
+# check out with autocrlf=true, which turned the C# into CRLF and broke the multi-line anchors in
+# scripts/guard-selftest.ps1. The Mac's scene files are not here: sync-assets reads them as git blobs.
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.xml -text
