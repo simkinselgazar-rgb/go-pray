@@ -141,6 +141,85 @@ public class ShieldTests(ITestOutputHelper output)
         finally { c.TearDown(); }
     });
 
+    // MARK: monitors changing mid-block (PM ruling 2026-10-23: only what changed is touched, no flash)
+
+    [Fact]
+    public void unplugAMonitorKeepsTheOtherWindowsAndPagesUp() => Ui.Run(async () =>
+    {
+        var list = new List<Display> { Fixture.D("1", 0, 1920, 1080), Fixture.D("2", 1920, 2560, 1440) };
+        var c = Fixture.Controller(list);
+        try
+        {
+            c.Show(Fixture.Ctx());
+            Assert.True(await Ui.Until(8, () => c.Slots.All(s => s.Ready)));
+            var main = c.Slots[0];
+            var mainWindow = main.Window; var mainWeb = main.Web;
+            list.RemoveAt(1);
+            c.DisplaysChanged();
+            Assert.True(await Ui.Until(2, () => c.Slots.Count == 1));
+            Assert.Same(main, c.Slots[0]);
+            Assert.Same(mainWindow, c.Slots[0].Window);       // never closed: nothing flashed
+            Assert.Same(mainWeb, c.Slots[0].Web);
+            Assert.True(c.Slots[0].Ready);
+            Assert.True(mainWindow.IsVisible);
+            Assert.True(c.IsPresenting);
+
+            list.Add(Fixture.D("3", 1920, 1920, 1080));        // plugged back in (a new id)
+            c.DisplaysChanged();
+            Assert.True(await Ui.Until(2, () => c.Slots.Count == 2));
+            Assert.Same(mainWindow, c.Slots[0].Window);
+            Assert.Equal(ShieldLayout.Art, c.Slots[1].Layout);
+            Assert.Equal("3", c.Slots[1].Display.Id);
+            Assert.True(await Ui.Until(8, () => c.Slots[1].Ready));
+            Assert.Empty(c.FallbackReasons);
+        }
+        finally { c.TearDown(); }
+    });
+
+    [Fact]
+    public void primaryChangeMovesTheMainWindowInPlace() => Ui.Run(async () =>
+    {
+        var a = Fixture.D("1", 0, 1920, 1080);
+        var b = Fixture.D("2", 1920, 2560, 1440);
+        var list = new List<Display> { a, b };
+        var c = Fixture.Controller(list);
+        try
+        {
+            c.Show(Fixture.Ctx());
+            Assert.True(await Ui.Until(8, () => c.Slots.All(s => s.Ready)));
+            var mainWindow = c.Slots[0].Window; var artWindow = c.Slots[1].Window;
+            list.Clear(); list.Add(b); list.Add(a);            // "2" is the primary now
+            c.DisplaysChanged();
+            Assert.True(await Ui.Until(2, () => c.Slots[0].Display == b));
+            Assert.Same(mainWindow, c.Slots[0].Window);
+            Assert.Equal(ShieldLayout.Full, c.Slots[0].Layout);
+            Assert.Equal(b, mainWindow.Frame);
+            Assert.Same(artWindow, c.Slots[1].Window);          // the art window took the monitor the main one left
+            Assert.Equal(a, artWindow.Frame);
+            Native.Win32.GetWindowRect(mainWindow.Handle, out var r);
+            Assert.Equal((2560, 1440), (r.Right - r.Left, r.Bottom - r.Top));
+        }
+        finally { c.TearDown(); }
+    });
+
+    [Fact]
+    public void noMonitorsForAMomentChangesNothing() => Ui.Run(async () =>
+    {
+        var list = new List<Display> { Fixture.D("1", 0, 1920, 1080) };
+        var c = Fixture.Controller(list);
+        try
+        {
+            c.Show(Fixture.Ctx());
+            var w = c.Slots[0].Window;
+            list.Clear();
+            c.DisplaysChanged();
+            await Task.Delay(600);
+            Assert.Single(c.Slots);
+            Assert.Same(w, c.Slots[0].Window);
+        }
+        finally { c.TearDown(); }
+    });
+
     [Fact]
     public void codingModeShowsOneNoticeWithTheAppName() => Ui.Run(async () =>
     {

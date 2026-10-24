@@ -44,7 +44,7 @@ internal sealed class ShieldController : IShieldPresenting
 {
     internal sealed class Slot(Display display, ShieldLayout layout, ShieldWindow window)
     {
-        public Display Display { get; } = display;
+        public Display Display { get; set; } = display;
         public ShieldLayout Layout { get; } = layout;
         public ShieldWindow Window { get; } = window;
         public SceneWebView? Web { get; set; }
@@ -388,8 +388,12 @@ internal sealed class ShieldController : IShieldPresenting
 
     void OnDisplaySettingsChanged(object? sender, EventArgs e) => _ui.BeginInvoke(DisplaysChanged);
 
-    /// <summary>Windows are rebuilt from the current monitors; one that cannot be made is just missing (the
-    /// main window and the gate still hold the block).</summary>
+    /// <summary>A monitor came, went or moved. Only what changed is touched (PM ruling 2026-10-23: the old
+    /// close-everything rebuild flashed the desktop for ~0.4 s): windows on monitors that are still there stay up
+    /// with their pages; a lost monitor's window closes; a new monitor gets a new art window. If the primary
+    /// changed, the main window moves to the new primary in place. A moment with no monitors at all changes
+    /// nothing (the next event fixes it up). Whatever cannot be made is just missing: the main window and the
+    /// gate still hold the block.</summary>
     internal void DisplaysChanged()
     {
         if (!IsPresenting || IsDismissing) return;
@@ -398,16 +402,77 @@ internal sealed class ShieldController : IShieldPresenting
         _rebuildTimer = After(TimeSpan.FromMilliseconds(300), () =>
         {
             if (_epoch != myEpoch || !IsPresenting || IsDismissing) return;
-            var now = Options.Displays();
-            bool same = now.SequenceEqual(Slots.Select(s => s.Display)) || (_ctx?.Mode == BlockMode.CodingApps && now.FirstOrDefault() == Slots.FirstOrDefault()?.Display);
-            if (same || Adjusted() is not { } c) return;
-            Log("displays changed: rebuilding the shield");
-            CloseAll();
-            _ctx = c;
-            _ctxAtMs = Now;
-            Build();
-            Engage();
+            Reconcile(Options.Displays());
         });
+    }
+
+    void Reconcile(IReadOnlyList<Display> now)
+    {
+        if (now.Count == 0 || _ctx is not { } ctx) return;
+        if (ctx.Mode == BlockMode.CodingApps)
+        {
+            if (Slots.FirstOrDefault() is not { } notice || notice.Display == now[0]) return;
+            var p = now[0];
+            double scale = Options.OnScreen ? Win32.ScaleAt(p.X + p.Width / 2, p.Y + p.Height / 2) : 1.0;
+            notice.Display = p;
+            notice.Window.MoveTo(Shield.Displays.NoticeFrame(p, scale));
+            Log($"displays changed: notice moved to {p.Id}");
+            return;
+        }
+        if (now.SequenceEqual(Slots.Select(s => s.Display))) return;
+        var main = Slots.FirstOrDefault(s => s.IsMain);
+        if (main == null) return;                       // never happens while presenting; nothing safe to move
+
+        var kept = new List<Slot> { main };
+        var spare = Slots.Where(s => !s.IsMain).ToList();
+        var changes = new List<string>();
+        if (main.Display != now[0]) { changes.Add($"main {main.Display.Id}->{now[0].Id}"); Move(main, now[0]); }
+        var uncovered = new List<Display>();
+        foreach (var d in now.Skip(1))
+        {
+            var same = spare.FirstOrDefault(s => s.Display.Id == d.Id);
+            if (same == null) { uncovered.Add(d); continue; }
+            spare.Remove(same);
+            if (same.Display != d) { changes.Add($"moved {d.Id}"); Move(same, d); }
+            kept.Add(same);
+        }
+        var ground = Ground(ctx);
+        var added = new List<Slot>();
+        foreach (var d in uncovered)
+        {
+            if (spare.Count > 0)
+            {
+                // e.g. the primary moved: the art window that was on it goes to the monitor the main window left
+                var reuse = spare[0]; spare.RemoveAt(0);
+                changes.Add($"art {reuse.Display.Id}->{d.Id}");
+                Move(reuse, d);
+                kept.Add(reuse);
+            }
+            else
+            {
+                var slot = new Slot(d, ShieldLayout.Art, new ShieldWindow(d, ground, activates: false, Options.OnScreen, notice: false));
+                changes.Add($"added {d.Id}");
+                kept.Add(slot); added.Add(slot);
+            }
+        }
+        foreach (var gone in spare)
+        {
+            changes.Add($"closed {gone.Display.Id}");
+            gone.ReadyTimer?.Stop();
+            gone.Web?.ShutDown();
+            gone.Window.Content = null;
+            gone.Window.CloseForReal();
+        }
+        Slots = kept;
+        foreach (var slot in added) { AttachWeb(slot); slot.Window.Show(); }
+        Log($"displays changed: {string.Join(", ", changes)}; the other windows stayed up");
+        if (Options.OnScreen) ActivateMain();
+    }
+
+    static void Move(Slot slot, Display d)
+    {
+        slot.Display = d;
+        slot.Window.MoveTo(d);
     }
 
     DispatcherTimer After(TimeSpan delay, Action action)

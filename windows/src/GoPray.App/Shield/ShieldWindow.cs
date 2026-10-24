@@ -70,6 +70,13 @@ internal sealed class ShieldWindow : Window
                            Win32.SWP_SHOWWINDOW | (Activates ? 0 : Win32.SWP_NOACTIVATE));
     }
 
+    /// <summary>A monitor change: same window, new rectangle (no close, so no flash).</summary>
+    public void MoveTo(Display frame)
+    {
+        Frame = frame;
+        Place();
+    }
+
     /// <summary>Bring back to the top of the topmost band (no size or move).</summary>
     public void RaiseToTop()
     {

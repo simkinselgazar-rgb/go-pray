@@ -1,0 +1,164 @@
+# windows-release.yml — the signed Windows installer (windows/docs/signing.md).
+# Kept at windows/ci/ on the `windows` branch; it is live only at .github/workflows/windows-release.yml (main + the tagged commit).
+#
+# Runs ONLY when a tag win-v<version> is pushed (e.g. win-v0.1.0). Never on pull_request: this repo is public
+# and the signing secret must never reach a fork's code. The signing job runs in the GitHub environment
+# `release` (required reviewer = Ahmed, deployments only from tags win-v*), so nothing is signed until Ahmed
+# approves the run; the secret is an environment secret and is only handed to the one signing step.
+#
+#   test  ->  (Ahmed approves)  ->  release: build-installer.ps1 -Sign (Artifact Signing via signtool + dlib,
+#             timestamped) -> signtool verify /pa -> SHA256 -> GitHub release win-v<version> with
+#             GoPray-Setup-<version>.exe, GoPray-Setup.exe (stable name) and the .sha256 file.
+
+name: Windows release
+
+on:
+  push:
+    tags: ['win-v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_NOLOGO: '1'
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  INNO_VERSION: '6.7.3'                       # same tools as the local build (docs/phase5-prep.md)
+  SDK_BUILDTOOLS_VERSION: '10.0.28000.2705'
+  SIGNING_CLIENT_VERSION: '1.0.128'
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: windows/global.json
+      - name: Version from the tag
+        shell: pwsh
+        run: |
+          if ('${{ github.ref_name }}' -notmatch '^win-v\d+\.\d+\.\d+$') { throw "tag must be win-v<major>.<minor>.<patch>" }
+      - name: Tests
+        working-directory: windows
+        run: dotnet test GoPray.sln -c Debug
+      - name: Guard and its self-test
+        working-directory: windows
+        shell: pwsh
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\guard.ps1 -Strict
+          if ($LASTEXITCODE -ne 0) { throw 'guard failed' }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts\guard-selftest.ps1 -SkipRelease
+          if ($LASTEXITCODE -ne 0) { throw 'guard self-test failed' }
+
+  release:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 45
+    environment: release
+    permissions:
+      contents: write                         # create the release and upload its assets
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: windows/global.json
+
+      - name: Tools (Inno Setup, signtool, the Artifact Signing dlib) from nuget.org
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP 'tools'
+          function Get-Pkg($id, $ver) {
+            $dir = Join-Path $tools "$id.$ver".ToLowerInvariant()
+            $zip = "$dir.zip"
+            Invoke-WebRequest "https://www.nuget.org/api/v2/package/$id/$ver" -OutFile $zip
+            Expand-Archive $zip $dir -Force
+            return $dir
+          }
+          $inno = Get-Pkg 'Tools.InnoSetup' $env:INNO_VERSION
+          $sdk  = Get-Pkg 'Microsoft.Windows.SDK.BuildTools' $env:SDK_BUILDTOOLS_VERSION
+          $cli  = Get-Pkg 'Microsoft.ArtifactSigning.Client' $env:SIGNING_CLIENT_VERSION
+          $iscc = Get-ChildItem $inno -Recurse -Filter ISCC.exe | Select-Object -First 1 -ExpandProperty FullName
+          $sign = Get-ChildItem $sdk -Recurse -Filter signtool.exe | Where-Object FullName -match '\\x64\\' | Select-Object -First 1 -ExpandProperty FullName
+          $dlib = Get-ChildItem $cli -Recurse -Filter Azure.CodeSigning.Dlib.dll | Where-Object FullName -match '\\x64\\' | Select-Object -First 1 -ExpandProperty FullName
+          foreach ($p in @($iscc, $sign, $dlib)) { if (-not $p) { throw 'a tool is missing from its package' } }
+          "ISCC=$iscc" >> $env:GITHUB_ENV
+          "SIGNTOOL=$sign" >> $env:GITHUB_ENV
+          "DLIB=$dlib" >> $env:GITHUB_ENV
+
+      - name: Signing metadata (names only, no secret)
+        shell: pwsh
+        env:
+          SIGNING_ENDPOINT: ${{ vars.SIGNING_ENDPOINT }}
+          SIGNING_ACCOUNT: ${{ vars.SIGNING_ACCOUNT }}
+          SIGNING_PROFILE_NAME: ${{ vars.SIGNING_PROFILE_NAME }}
+        run: |
+          foreach ($n in 'SIGNING_ENDPOINT','SIGNING_ACCOUNT','SIGNING_PROFILE_NAME') { if (-not (Get-Item "env:$n").Value) { throw "environment variable $n is not set on the 'release' environment" } }
+          $m = Join-Path $env:RUNNER_TEMP 'signing-metadata.json'
+          @{ Endpoint = $env:SIGNING_ENDPOINT; CodeSigningAccountName = $env:SIGNING_ACCOUNT; CertificateProfileName = $env:SIGNING_PROFILE_NAME } |
+            ConvertTo-Json | Set-Content -Encoding utf8 $m
+          "SIGNING_METADATA=$m" >> $env:GITHUB_ENV
+
+      - name: Build, sign and package (build-installer.ps1 -Sign)
+        working-directory: windows
+        shell: pwsh
+        env:
+          # DefaultAzureCredential in the dlib picks these up (EnvironmentCredential). Only this step sees the secret.
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+        run: |
+          $version = '${{ github.ref_name }}'.Substring(5)
+          "VERSION=$version" >> $env:GITHUB_ENV
+          ./scripts/build-installer.ps1 -Version $version -Dotnet dotnet -Iscc $env:ISCC -Sign -Signtool $env:SIGNTOOL -Dlib $env:DLIB -Metadata $env:SIGNING_METADATA
+
+      - name: Verify the signatures (GoPray.exe and the setup)
+        working-directory: windows
+        shell: pwsh
+        run: |
+          foreach ($f in @('out\publish\GoPray.exe', "out\GoPray-Setup-$env:VERSION.exe")) {
+            & $env:SIGNTOOL verify /pa /v $f
+            if ($LASTEXITCODE -ne 0) { throw "not validly signed: $f" }
+            # The signer must be Ahmed's PublicTrust identity, nothing else.
+            $sig = Get-AuthenticodeSignature $f
+            $cn = if ($sig.SignerCertificate.Subject -match '(?:^|,\s*)CN=([^,]+)') { $Matches[1].Trim('"', ' ') } else { '' }
+            if ($sig.Status -ne 'Valid' -or $cn -ne 'Ahmed Elgazar') { throw "unexpected signer on ${f}: status=$($sig.Status) CN=$cn" }
+            "signed OK: $f (CN=$cn)"
+          }
+
+      - name: Stable name and SHA256
+        working-directory: windows/out
+        shell: pwsh
+        run: |
+          Copy-Item "GoPray-Setup-$env:VERSION.exe" GoPray-Setup.exe
+          $h = (Get-FileHash GoPray-Setup.exe -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$h  GoPray-Setup.exe" | Set-Content -Encoding ascii GoPray-Setup.exe.sha256
+          Get-Content "GoPray-Setup-$env:VERSION.exe.sha256", GoPray-Setup.exe.sha256
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: GoPray-Setup-${{ env.VERSION }}
+          path: |
+            windows/out/GoPray-Setup-${{ env.VERSION }}.exe
+            windows/out/GoPray-Setup-${{ env.VERSION }}.exe.sha256
+          if-no-files-found: error
+
+      - name: GitHub release ${{ github.ref_name }}
+        working-directory: windows/out
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $files = @("GoPray-Setup-$env:VERSION.exe", "GoPray-Setup-$env:VERSION.exe.sha256", 'GoPray-Setup.exe', 'GoPray-Setup.exe.sha256')
+          gh release view $tag *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --verify-tag --title "Go Pray for Windows $env:VERSION" --notes "Signed Windows installer. SHA256 files are attached."
+            if ($LASTEXITCODE -ne 0) { throw 'release create failed' }
+          }
+          gh release upload $tag @files --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'upload failed' }
