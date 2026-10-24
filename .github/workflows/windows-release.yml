@@ -158,7 +158,7 @@ jobs:
           $files = @("GoPray-Setup-$env:VERSION.exe", "GoPray-Setup-$env:VERSION.exe.sha256", 'GoPray-Setup.exe', 'GoPray-Setup.exe.sha256')
           gh release view $tag *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --verify-tag --title "Go Pray for Windows $env:VERSION" --notes "Signed Windows installer. SHA256 files are attached."
+            gh release create $tag --verify-tag --latest=false --title "Go Pray for Windows $env:VERSION" --notes "Signed Windows installer. SHA256 files are attached."
             if ($LASTEXITCODE -ne 0) { throw 'release create failed' }
           }
           gh release upload $tag @files --clobber

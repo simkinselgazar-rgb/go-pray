@@ -15,13 +15,15 @@
 <p align="center">
   <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/latest"><img src="https://img.shields.io/github/v/release/simkinselgazar-rgb/go-pray?include_prereleases&label=release&color=5C4835" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/macOS-14%2B-2D1C0E?logo=apple&logoColor=white" alt="macOS 14 or later">
+  <img src="https://img.shields.io/badge/Windows-10%2B-2D1C0E?logo=windows&logoColor=white" alt="Windows 10 or later">
   <img src="https://img.shields.io/badge/notarized-by%20Apple-3E6B3A" alt="Notarized by Apple">
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-9C7F5C" alt="MIT licence"></a>
   <img src="https://img.shields.io/badge/free-%26%20open%20source-447E6F" alt="Free and open source">
 </p>
 
 <p align="center">
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/latest/download/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.1.1/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.1.0/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
 </p>
 
 <p align="center"><code>brew install simkinselgazar-rgb/tap/go-pray</code></p>
@@ -102,6 +104,8 @@ brew install simkinselgazar-rgb/tap/go-pray
 ```
 
 Needs macOS 14 (Sonoma) or later.
+
+**Windows:** download [GoPray-Setup.exe](https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.1.0/GoPray-Setup.exe) and run it. No admin password needed. It is signed by Ahmed Elgazar; for the first few days Windows SmartScreen may still show a note, so click **More info → Run anyway**. Needs Windows 10 (1809) or later, 64-bit. Source: the [`windows/`](windows/) folder.
 
 On first launch Go Pray asks three things: your city, how your prayer times are worked out (method and Asr), and how it should stop you. macOS then shows a note that Go Pray can run in the background. That is expected: it keeps the Athan on time after a restart.
 
