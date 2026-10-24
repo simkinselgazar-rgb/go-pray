@@ -1,0 +1,20 @@
+{
+  "block" : {
+    "athanAt" : "2026-10-22T19:56:00.000Z",
+    "athanPlayed" : true,
+    "blockStartedAt" : "2026-10-22T19:56:00.512Z",
+    "emergencyExitsEnabled" : true,
+    "hiddenApps" : [
+      "com.anthropic.claudefordesktop",
+      "com.apple.Terminal",
+      "figma"
+    ],
+    "lockSeconds" : 600,
+    "prayer" : "asr",
+    "silenced" : false
+  },
+  "launches" : [
+
+  ],
+  "schemaVersion" : 1
+}

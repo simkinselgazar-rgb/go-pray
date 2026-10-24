@@ -1,5 +1,5 @@
 // TrayIcon.cs — the notification-area icon (the Mac's menu bar icon). Left click opens the popover; right
-// click a short menu (Open Go Pray, Settings…, Credits, Quit). The mihrab glyph switches with the taskbar
+// click a short menu (Open Go Pray, Settings…, Check for updates…, Credits, Quit). The mihrab glyph switches with the taskbar
 // theme (SystemUsesLightTheme: black glyph on a light taskbar, white on a dark one).
 
 using System;
@@ -13,19 +13,25 @@ namespace GoPray.App.Tray;
 internal sealed class TrayIcon : IDisposable
 {
     readonly NotifyIcon _icon;
-    readonly ToolStripMenuItem _quit;
+    readonly ToolStripMenuItem _quit, _updates;
     public ContextMenuStrip Menu { get; }
 
-    public TrayIcon(Action openPopover, Action openSettings, Action openCredits, Action quit, Func<bool> isBlocked)
+    public TrayIcon(Action openPopover, Action openSettings, Action openCredits, Action quit, Func<bool> isBlocked, Action checkForUpdates)
     {
         Menu = new ContextMenuStrip();
         Menu.Items.Add("Open Go Pray", null, (_, _) => openPopover());
         Menu.Items.Add("Settings…", null, (_, _) => openSettings());
+        _updates = new ToolStripMenuItem("Check for updates…", null, (_, _) => checkForUpdates());
+        Menu.Items.Add(_updates);
         Menu.Items.Add("Credits", null, (_, _) => openCredits());
         Menu.Items.Add(new ToolStripSeparator());
         _quit = new ToolStripMenuItem("Quit Go Pray", null, (_, _) => quit());
         Menu.Items.Add(_quit);
-        Menu.Opening += (_, _) => _quit.Enabled = !isBlocked();      // the gate refuses it too
+        Menu.Opening += (_, _) =>
+        {
+            _quit.Enabled = !isBlocked();         // the gate refuses it too
+            _updates.Enabled = !isBlocked();      // never during a block (the checker refuses it too)
+        };
         _icon = new NotifyIcon { Text = "Go Pray", ContextMenuStrip = Menu, Visible = true, Icon = ThemeIcon() };
         _icon.MouseClick += (_, e) => { if (e.Button == MouseButtons.Left) openPopover(); };
         SystemEvents.UserPreferenceChanged += OnPreference;

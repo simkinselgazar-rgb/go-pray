@@ -23,6 +23,17 @@ internal static class DebugMenu
         p.Children.Add(Theme.Link("Trigger Athan now (20 s lock) · Whole screen", () => Trigger(env, BlockMode.WholeScreen)));
         p.Children.Add(Theme.Link("Trigger Athan now (20 s lock) · Coding apps", () => Trigger(env, BlockMode.CodingApps)));
         p.Children.Add(Theme.Link("Wipe state (idle only)", () => env.Gate.DebugWipeState()));
+        // "Emergency exits (debug)": set this year's used count, idle only.
+        var used = new StackPanel { Orientation = Orientation.Horizontal };
+        used.Children.Add(Theme.Text("Emergency exits (debug) used: ", 11, Theme.Secondary, wrap: false));
+        for (int n = 0; n <= EmergencyExitPolicy.Total; n++)
+        {
+            int k = n;
+            var l = Theme.Link(k.ToString(System.Globalization.CultureInfo.InvariantCulture), () => env.Gate.DebugSetEmergencyExitsUsed(k));
+            l.Margin = new Thickness(0, 0, 8, 0);
+            used.Children.Add(l);
+        }
+        p.Children.Add(used);
         return p;
     }
 

@@ -7,8 +7,8 @@ using System.Text.Json;
 
 namespace GoPray.Core;
 
-/// <summary>What the page may ask. Four names, nothing else. Anything else is dropped.</summary>
-public enum BridgeMessage { Ready, Prayed, Silence, Gone }
+/// <summary>What the page may ask. Five names (v2 adds "emergency", the last one), nothing else. Anything else is dropped.</summary>
+public enum BridgeMessage { Ready, Prayed, Silence, Gone, Emergency }
 
 /// <summary>Which page layout the host asks for.</summary>
 public enum ShieldLayout { Full, Notice, Art }
@@ -39,6 +39,7 @@ public static class BridgeMessages
                 "prayed" => BridgeMessage.Prayed,
                 "silence" => BridgeMessage.Silence,
                 "gone" => BridgeMessage.Gone,
+                "emergency" => BridgeMessage.Emergency,
                 _ => null,
             };
         }
@@ -61,6 +62,8 @@ public sealed record BridgePayload
     public bool ReduceMotion { get; init; }
     public string? HiddenAppName { get; init; }
     public ShieldLayout Layout { get; init; }
+    /// <summary>v2: 0…5; 0 → the page draws no exit button.</summary>
+    public int EmergencyExitsLeft { get; init; }
 
     public static BridgePayload From(ShieldContext ctx, ShieldLayout layout, bool? reduceMotionOverride = null) => new()
     {
@@ -72,6 +75,7 @@ public sealed record BridgePayload
         ReduceMotion = reduceMotionOverride ?? ctx.ReduceMotion,
         HiddenAppName = ctx.HiddenAppName is { } n ? (n.Length > MaxAppNameLength ? n[..MaxAppNameLength] : n) : null,
         Layout = layout,
+        EmergencyExitsLeft = Math.Clamp(ctx.EmergencyExitsLeft, 0, EmergencyExitPolicy.Total),
     };
 
     /// <summary>The JS call. The JSON comes from the encoder, never from string pasting. Keys sorted, as on the Mac;
@@ -81,6 +85,7 @@ public sealed record BridgePayload
         using var w = SwiftJson.Writer(out var buffer, indented: false, encoder: JavaScriptEncoder.Default);
         w.WriteStartObject();
         w.WriteNumber("athanRemainingMs", AthanRemainingMs);
+        w.WriteNumber("emergencyExitsLeft", EmergencyExitsLeft);
         if (HiddenAppName is { } n) w.WriteString("hiddenAppName", n);
         w.WriteString("layout", Layout switch { ShieldLayout.Full => "full", ShieldLayout.Notice => "notice", _ => "art" });
         w.WriteNumber("lockMs", LockMs);

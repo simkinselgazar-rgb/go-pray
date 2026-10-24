@@ -6,20 +6,22 @@
 //   2. No escape by reflex. Only RequestConfirm() after the lock ends a block.
 //
 // Two private exits, both in this file:
-//   EndBlock(kind) — the confirmed end. Exactly one caller today: RequestConfirm().
+//   EndBlock(kind) — the end of a block by request. Exactly two callers: RequestConfirm() ("I prayed" after
+//                    the lock → LastConfirmed) and RequestEmergencyExit() (v2, PLAN-v2 §2 + §9: 5 a year, the
+//                    captured switch on → LastDropped, a plain fade). Nothing else may end a block.
 //   FailOpen(reason) — a §G fail-open rule (window closed, next Athan, crash loop, no schedule).
 //                      Never reachable from the shield, the menu or a page message.
-// windows/scripts/guard.ps1 checks both (rules 1 and 2).
+// windows/scripts/guard.ps1 checks both (rules 1 and 2) and that only RequestEmergencyExit records a use (rule 14).
 //
-// Room for ONE more exit (PM FYI 2026-10-23: a limited "emergency exit", not designed or built).
-// When the PM approves it, it is a second public method here that calls EndBlock(EndKind.Emergency),
-// and guard.ps1's $EndBlockCallers list gains its name. Nothing else may end a block.
+// v2 captures (PLAN-v2 §1.1 rule 3, §9.2): the blocked-apps list and "Allow emergency exits" are copied into
+// state.json at block start, like the lock length; the running block reads only those copies.
 //
 // Threading: like the Mac's @MainActor, the gate is used from one thread (the app's UI thread).
 // The only async path is the leaving timeout, which posts back to the SynchronizationContext that
 // ended the block.
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,6 +68,10 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     readonly IAppHiding _hider;
     readonly Func<Settings> _settings;
     readonly Func<bool> _systemReduceMotion;
+    /// <summary>null = no exits on this gate (0 left): tests that predate v2, and a wiring slip fails closed.</summary>
+    readonly EmergencyLedger? _ledger;
+    /// <summary>The compiled-in default app ids (App: CodingApps.Names.Keys).</summary>
+    readonly IReadOnlyList<string> _defaultApps;
     /// <summary>A dismiss that never calls back is torn down after this (fail open).</summary>
     public TimeSpan LeavingTimeout { get; }
 
@@ -84,13 +90,13 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     /// ended" (neither may block the window that is already open).</summary>
     (bool SetupComplete, bool Paused) _lastSeen;
 
-    /// <summary>How a block ended through EndBlock. Today only "I prayed" after the lock.</summary>
-    enum EndKind { Confirmed }
-
     public BlockGate(IClock clock, StateStore store, IPrayerScheduleProviding schedule, IShieldPresenting shield,
                      IAthanPlaying audio, IAppHiding hider, Func<Settings> settings,
-                     TimeSpan? leavingTimeout = null, Func<bool>? systemReduceMotion = null)
+                     TimeSpan? leavingTimeout = null, Func<bool>? systemReduceMotion = null,
+                     EmergencyLedger? ledger = null, IEnumerable<string>? defaultApps = null)
     {
+        _ledger = ledger;
+        _defaultApps = (defaultApps ?? []).ToList();
         _clock = clock;
         _store = store;
         _schedule = schedule;
@@ -160,8 +166,15 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
             ReduceMotion = s.ReduceMotion ?? _systemReduceMotion(),
             HiddenAppName = HiddenAppName,
             BlockStartedAt = b.BlockStartedAt, LockSeconds = (int)Lock(b),
+            EmergencyExitsLeft = ExitsLeft(b),
         };
     }
+
+    /// <summary>Exits left for this block: 0 when its captured switch is off (the page draws no button).</summary>
+    int ExitsLeft(BlockStateFile.Block b) => b.EmergencyExitsEnabled ? EmergencyExitsRemaining : 0;
+
+    /// <summary>Exits left this year, whatever the switch says (the menu and Settings show it). Read from disk every time.</summary>
+    public int EmergencyExitsRemaining => _ledger?.Remaining(_clock.Now) ?? 0;
 
     // MARK: Inputs
 
@@ -185,7 +198,7 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
             return;
         }
         if (State.CurrentBlock != null) FailOpen(FailOpenReason.ReplacedByNextAthan);
-        StartBlock(w.Prayer, w.Athan, now, LockPolicy.SecondsForMinutes(s.LockMinutes));
+        StartBlock(w.Prayer, w.Athan, now, LockPolicy.SecondsForMinutes(s.LockMinutes), s);
     }
 
     /// <summary>Launch, wake, clock, time zone, settings, midnight. Applies the wake rule and every
@@ -228,14 +241,32 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
         // Wake rule (§3): the open window's prayer, if not done and not paused, blocks now.
         if (!s.SetupComplete || _schedule.Window(now) is not { } w || !(w.Athan <= now) || !(now < w.End)
             || IsDone(w) || CoveredByPause(w, s)) return;
-        StartBlock(w.Prayer, w.Athan, now, LockPolicy.SecondsForMinutes(s.LockMinutes));
+        StartBlock(w.Prayer, w.Athan, now, LockPolicy.SecondsForMinutes(s.LockMinutes), s);
     }
 
-    /// <summary>The ONLY path that ends a block. False while locked (or idle).</summary>
+    /// <summary>"I prayed": ends the block only after the lock. False while locked (or idle).</summary>
     public bool RequestConfirm()
     {
         if (Phase != Phase.CanConfirm) return false;
         EndBlock(EndKind.Confirmed);
+        return true;
+    }
+
+    /// <summary>The second and last way a request ends a block (PLAN-v2 §2.2, §9). Allowed while locked or at
+    /// canConfirm, only if the block's captured switch is on and an exit is left this year. The use is recorded
+    /// FIRST; if it cannot be written the exit is refused (the normal path is untouched: no trap, no free exit).
+    /// The prayer is recorded as dropped, never confirmed.</summary>
+    public bool RequestEmergencyExit()
+    {
+        if (State.CurrentBlock is not { } b || Phase.Kind is not (PhaseKind.Locked or PhaseKind.CanConfirm)) return false;
+        if (!b.EmergencyExitsEnabled || _ledger == null || _ledger.Remaining(_clock.Now) <= 0) return false;
+        try { _ledger.RecordUse(new EmergencyLedger.Use(b.Prayer, b.AthanAt, _clock.Now)); }
+        catch (Exception e)
+        {
+            CoreLog.Error($"emergency exit refused: the use could not be recorded ({e.Message})");
+            return false;
+        }
+        EndBlock(EndKind.Emergency);
         return true;
     }
 
@@ -332,7 +363,10 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
         Persist();
     }
 
-    void StartBlock(Prayer prayer, DateTime athanAt, DateTime now, double lockSeconds)
+    /// <summary>The blocked-apps list for a block starting with these settings, sorted so the file is stable.</summary>
+    List<string> Capture(Settings s) => BlockedApps.Effective(s, _defaultApps).OrderBy(x => x, StringComparer.Ordinal).ToList();
+
+    void StartBlock(Prayer prayer, DateTime athanAt, DateTime now, double lockSeconds, Settings s)
     {
         if (_leavingToken != null)        // a dismiss is still fading: cut it
         {
@@ -345,6 +379,8 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
             {
                 Prayer = prayer, AthanAt = athanAt, BlockStartedAt = now, Silenced = false, AthanPlayed = true,
                 LockSeconds = lockSeconds,   // captured: later settings changes cannot touch it
+                HiddenApps = Capture(s),     // captured too (v2)
+                EmergencyExitsEnabled = s.EmergencyExitsEnabled,
             },
             Launches = [],
         };
@@ -357,7 +393,14 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     {
         var s = _settings();
         _presented = true;
-        if (s.Mode == BlockMode.CodingApps) _hider.Start();
+        // A 0.1.x block resumed after the upgrade has no captured list: compute it once and write it back.
+        if (State.CurrentBlock is { HiddenApps: null } old)
+        {
+            State = State with { CurrentBlock = old with { HiddenApps = Capture(s) } };
+            Persist();
+        }
+        if (s.Mode == BlockMode.CodingApps && State.CurrentBlock is { } cb)
+            _hider.Start(BlockedApps.CleanCaptured(cb.HiddenApps ?? []).ToHashSet(StringComparer.Ordinal));
         if (freshAthan && State.CurrentBlock is { Silenced: false } b)
         {
             try { _audio.Play(b.Prayer, s.Voice, s.AthanVolume); }
@@ -369,8 +412,11 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     private void EndBlock(EndKind kind)
     {
         if (State.CurrentBlock is not { } b) return;
-        // Confirmed (and, later, an approved emergency exit) both mark the prayer done.
-        State = State with { LastConfirmed = new BlockStateFile.Done(b.Prayer, b.AthanAt), CurrentBlock = null, Launches = [] };
+        // Both mark the prayer done for the wake rule. Honest record: an emergency exit is dropped, never confirmed.
+        var done = new BlockStateFile.Done(b.Prayer, b.AthanAt);
+        State = kind == EndKind.Confirmed
+            ? State with { LastConfirmed = done, CurrentBlock = null, Launches = [] }
+            : State with { LastDropped = done, CurrentBlock = null, Launches = [] };
         Persist();
         CoreLog.Notice($"block {kind.ToString().ToLowerInvariant()} {SwiftJson.Name(b.Prayer)}");
         _audio.Stop();
@@ -379,7 +425,7 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
         HiddenAppName = null;
         int token = ++_tokenCounter;
         _leavingToken = token;
-        _shield.Dismiss(() => FinishLeaving(token));
+        _shield.Dismiss(() => FinishLeaving(token), kind);
         // Fail open: a dismiss that never calls back cannot keep us "blocked".
         var ctx = SynchronizationContext.Current;
         _ = Task.Delay(LeavingTimeout).ContinueWith(_ =>
@@ -442,7 +488,7 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     {
         var now = _clock.Now;
         if (State.CurrentBlock != null) FailOpen(FailOpenReason.ReplacedByNextAthan);
-        StartBlock(prayer, now, now, lockSeconds);
+        StartBlock(prayer, now, now, lockSeconds, _settings());
         // A synthetic window (athan = now, end = now + 1 h) through the same state.json, so a
         // relaunch mid-block resumes it like a real block.
         State = State with { CurrentBlock = State.CurrentBlock! with { DebugWindowEnd = now.AddSeconds(3600) } };
@@ -456,6 +502,13 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
         _store.Wipe();
         State = new BlockStateFile();
     }
+
+    /// <summary>Debug menu only, idle only: this year's emergency exits used = <paramref name="used"/> (0…5).</summary>
+    public void DebugSetEmergencyExitsUsed(int used)
+    {
+        if (IsBlocked || _ledger == null) return;
+        _ledger.DebugSetUsed(used, _clock.Now);
+    }
 #endif
 
     // MARK: IShieldDelegate
@@ -467,4 +520,10 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     }
 
     public void ShieldDidRequestSilence() => RequestSilence();
+
+    public void ShieldDidRequestEmergencyExit()
+    {
+        // Refused → re-sync the page with the true count (0 hides the button).
+        if (!RequestEmergencyExit() && ShieldContext() is { } ctx) _shield.Update(ctx);
+    }
 }

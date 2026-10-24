@@ -25,11 +25,28 @@ public sealed record BlockStateFile
         /// <summary>Copied from Settings.LockMinutes at block start (CONTRACT-NOTES #26). Missing in a
         /// file → the default 10 min. The gate never honours more than LockPolicy.MaxSeconds.</summary>
         public double LockSeconds { get; init; } = LockPolicy.SecondsForMinutes(LockPolicy.DefaultMinutes);
+        /// <summary>v2 (PLAN-v2 §1.1 rule 3): the blocked-apps list captured at block start; the hider gets this,
+        /// never the settings. null = a 0.1.x file (the gate fills it in once on resume). Read back cleaned
+        /// (BlockedApps.CleanCaptured: never-blockable ids dropped, at most 200).</summary>
+        public IReadOnlyList<string>? HiddenApps { get; init; }
+        /// <summary>v2 (PLAN-v2 §9.2): "Allow emergency exits" captured at block start. Absent in a 0.1.x file → true.</summary>
+        public bool EmergencyExitsEnabled { get; init; } = true;
 #if DEBUG
         /// <summary>DEBUG only (CONTRACT-NOTES #39): the synthetic window end of a "Trigger Athan now"
         /// block. Not in Release builds; a stray key in a file is ignored there.</summary>
         public DateTime? DebugWindowEnd { get; init; }
 #endif
+
+        public bool Equals(Block? o) =>
+            o is not null && Prayer == o.Prayer && AthanAt == o.AthanAt && BlockStartedAt == o.BlockStartedAt && Silenced == o.Silenced
+            && AthanPlayed == o.AthanPlayed && LockSeconds.Equals(o.LockSeconds) && EmergencyExitsEnabled == o.EmergencyExitsEnabled
+            && (HiddenApps == null ? o.HiddenApps == null : o.HiddenApps != null && HiddenApps.SequenceEqual(o.HiddenApps))
+#if DEBUG
+            && DebugWindowEnd == o.DebugWindowEnd
+#endif
+            ;
+
+        public override int GetHashCode() => HashCode.Combine(Prayer, AthanAt, BlockStartedAt, Silenced, LockSeconds);
     }
 
     /// <summary>A prayer that is finished for the gate. LastConfirmed = "I prayed". LastDropped = given
@@ -80,6 +97,13 @@ public sealed record BlockStateFile
 #if DEBUG
             if (b.DebugWindowEnd is { } dwe) SwiftJson.WriteDate(w, "debugWindowEnd", dwe, fractional: true);
 #endif
+            w.WriteBoolean("emergencyExitsEnabled", b.EmergencyExitsEnabled);
+            if (b.HiddenApps is { } apps)
+            {
+                w.WriteStartArray("hiddenApps");
+                foreach (var a in apps) w.WriteStringValue(a);
+                w.WriteEndArray();
+            }
             w.WriteNumber("lockSeconds", b.LockSeconds);
             w.WriteString("prayer", SwiftJson.Name(b.Prayer));
             w.WriteBoolean("silenced", b.Silenced);
@@ -125,6 +149,9 @@ public sealed record BlockStateFile
                 AthanPlayed = SwiftJson.Bool(SwiftJson.Required(o, "athanPlayed")),
                 LockSeconds = SwiftJson.Optional(o, "lockSeconds") is { } ls ? SwiftJson.Double(ls)
                     : LockPolicy.SecondsForMinutes(LockPolicy.DefaultMinutes),
+                HiddenApps = SwiftJson.Optional(o, "hiddenApps") is { } ha
+                    ? BlockedApps.CleanCaptured(SwiftJson.Array(ha, "hiddenApps").Select(SwiftJson.String)) : null,
+                EmergencyExitsEnabled = SwiftJson.Optional(o, "emergencyExitsEnabled") is not { } ee || SwiftJson.Bool(ee),
 #if DEBUG
                 DebugWindowEnd = SwiftJson.Optional(o, "debugWindowEnd") is { } dw ? SwiftJson.Date(dw) : null,
 #endif

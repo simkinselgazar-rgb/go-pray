@@ -1,0 +1,35 @@
+{
+  "athanVolume" : 0.15,
+  "checkForUpdates" : false,
+  "city" : "Montréal, Québec",
+  "customApps" : [
+    {
+      "id" : "com.figma.Desktop",
+      "name" : "Figma",
+      "platform" : "mac"
+    },
+    {
+      "id" : "figma",
+      "name" : "Figma",
+      "platform" : "windows"
+    }
+  ],
+  "disabledDefaultApps" : [
+    "com.apple.Safari",
+    "msedge"
+  ],
+  "emergencyExitsEnabled" : false,
+  "latitude" : 45.50884,
+  "launchAtLogin" : true,
+  "lockMinutes" : 20,
+  "longitude" : -73.58781,
+  "madhab" : 2,
+  "method" : "northAmerica",
+  "mode" : "codingApps",
+  "setupComplete" : true,
+  "voice" : {
+    "shia" : {
+      "_0" : "Salimi"
+    }
+  }
+}

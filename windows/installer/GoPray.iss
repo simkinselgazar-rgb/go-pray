@@ -88,6 +88,11 @@ begin
       if MsgBox('Also remove your Go Pray settings and data?' + #13#10 + #13#10 +
                 'This is your city, prayer-time choices and the app''s notes. Keep them if you plan to install Go Pray again.',
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
+      begin
         DelTree(Data, True, True, True);
+        // v2: the emergency-exit mirror (PLAN-v2 §2.4: a full uninstall with "Yes" resets the exits; an admin act).
+        if DirExists(ExpandConstant('{userappdata}\GoPray')) then
+          DelTree(ExpandConstant('{userappdata}\GoPray'), True, True, True);
+      end;
   end;
 end;

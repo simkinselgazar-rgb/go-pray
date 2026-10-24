@@ -55,6 +55,8 @@ public class Phase4Tests
 
     static readonly IntPtr Cursor = 1, Term = 2, Notes = 3, Edge = 4;
 
+    static readonly IReadOnlySet<string> AllDefaults = CodingApps.Names.Keys.Select(BlockedApps.Normalize).ToHashSet();
+
     static (AppHider, FakeDesktop) Hider()
     {
         var d = new FakeDesktop { Windows = { [Cursor] = "Cursor", [Term] = "WindowsTerminal", [Notes] = "notepad", [Edge] = "MSEDGE" } };
@@ -65,7 +67,7 @@ public class Phase4Tests
     public void startMinimisesListedAppsOnlyCaseInsensitive()
     {
         var (h, d) = Hider();
-        h.Start();
+        h.Start(AllDefaults);
         Assert.Equal(new[] { Cursor, Term, Edge }.OrderBy(x => x), d.Minimised.OrderBy(x => x));
         Assert.DoesNotContain(Notes, d.Minimised);
     }
@@ -76,7 +78,7 @@ public class Phase4Tests
         var (h, d) = Hider();
         var names = new List<string>();
         h.OnReHide = names.Add;
-        h.Start();
+        h.Start(AllDefaults);
         d.Minimised.Remove(Cursor);                // the person clicks it in the taskbar
         d.Foreground!(Cursor);
         Assert.Contains(Cursor, d.Minimised);
@@ -90,7 +92,7 @@ public class Phase4Tests
     public void stopIgnoresLateEventsAndRestoresNothing()
     {
         var (h, d) = Hider();
-        h.Start();
+        h.Start(AllDefaults);
         var watch = d.Foreground!;
         h.Stop();
         Assert.Equal(0, d.Watching);
@@ -105,7 +107,7 @@ public class Phase4Tests
     {
         var (h, d) = Hider();
         d.Refuse.Add(Term);                        // e.g. an elevated terminal (UIPI)
-        h.Start(); h.Start();
+        h.Start(AllDefaults); h.Start(AllDefaults);
         Assert.Equal(1, d.Watching);
         Assert.DoesNotContain(Term, d.Minimised);
         Assert.Contains(Cursor, d.Minimised);
@@ -115,10 +117,39 @@ public class Phase4Tests
     public void theListHasTheAppsSeenOnThisPcAndNotGoPray()
     {
         foreach (var p in new[] { "cmd", "msedge", "Cursor", "WindowsTerminal", "warp", "WARP", "powershell", "ChatGPT", "Code", "chrome", "firefox" })
-            Assert.True(CodingApps.IsListed(p), p);
+            Assert.True(CodingApps.Names.ContainsKey(p), p);
         foreach (var p in new[] { "GoPray", "msedgewebview2", "explorer", "Spotify", "Teams", "Zoom", "notepad" })
-            Assert.False(CodingApps.IsListed(p), p);
+            Assert.False(CodingApps.Names.ContainsKey(p), p);
         Assert.Equal("Visual Studio Code", CodingApps.DisplayName("code"));
+    }
+
+    // MARK: v2 — the captured list (PLAN-v2 §1, §5 lane E)
+
+    [Fact]
+    public void hiderHidesExactlyThePassedSetAndNothingElse()
+    {
+        var (h, d) = Hider();
+        h.Start(new HashSet<string> { "notepad", "cursor" });     // a custom app + one default; Terminal and Edge turned off
+        Assert.Equal(new[] { Cursor, Notes }.OrderBy(x => x), d.Minimised.OrderBy(x => x));
+        d.Foreground!(Term);                                     // not in the list: left alone
+        Assert.DoesNotContain(Term, d.Minimised);
+    }
+
+    [Fact]
+    public void hiderRefusesANeverBlockAppEvenIfPassed()
+    {
+        var d = new FakeDesktop { Windows = { [5] = "explorer", [6] = "Taskmgr", [Cursor] = "Cursor" } };
+        var h = new AppHider(d);
+        h.Start(new HashSet<string> { "explorer", "taskmgr", "cursor" });   // a tampered list
+        Assert.Equal(new[] { Cursor }, d.Minimised.ToArray());
+    }
+
+    [Fact]
+    public void defaultsHaveNoNeverBlockAppAndNoDuplicate()
+    {
+        Assert.DoesNotContain(CodingApps.Defaults, x => BlockedApps.NeverBlock.Contains(x.Id));
+        Assert.Equal(CodingApps.Defaults.Count, CodingApps.Defaults.Select(x => x.Id).Distinct().Count());
+        Assert.All(CodingApps.Defaults, x => Assert.Equal(BlockedApps.Normalize(x.Id), x.Id));
     }
 
     // MARK: logon task

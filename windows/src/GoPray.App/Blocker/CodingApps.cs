@@ -1,5 +1,7 @@
-// CodingApps.cs — the compiled-in list of apps minimised in "Coding apps only" mode (PLAN.md §3 row 2).
-// A static list inside the signed exe on purpose: not a user file, so it cannot be edited to dodge a block.
+// CodingApps.cs — the compiled-in DEFAULT apps minimised in "Coding apps only" mode (PLAN.md §3 row 2).
+// v2 (PLAN-v2 §1.1): the person can turn defaults off and add their own in Settings; the gate captures the
+// resulting list into state.json at block start, so a running block still cannot be edited away. Nothing is
+// removed from this table because someone turned it off. None of these is in BlockedApps.NeverBlock (tested).
 // Process names, compared case-insensitively (spike Q6: Warp's process is "warp"). Console windows belong
 // to the shell inside them (cmd, powershell, pwsh), and Windows Terminal windows to WindowsTerminal.
 // Seen on Ahmed's PC (spike Q6, 2026-10-23): cmd, msedge, Cursor, WindowsTerminal, warp, powershell, ChatGPT.
@@ -8,6 +10,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using GoPray.Core;
 
 namespace GoPray.App.Blocker;
 
@@ -49,6 +52,9 @@ internal static class CodingApps
         ["vivaldi"] = "Vivaldi",
     };
 
-    public static bool IsListed(string processName) => Names.ContainsKey(processName);
+    /// <summary>The defaults for the Settings list, in table order (AI + terminals, editors, browsers), ids normalised.</summary>
+    public static readonly IReadOnlyList<(string Id, string Name)> Defaults =
+        Names.Select(kv => (BlockedApps.Normalize(kv.Key), kv.Value)).DistinctBy(x => x.Item1).ToList();
+
     public static string DisplayName(string processName) => Names.TryGetValue(processName, out var n) ? n : processName;
 }

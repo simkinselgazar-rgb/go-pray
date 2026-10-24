@@ -20,9 +20,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version 2
 
-# The methods allowed to call EndBlock(. One today. The PM-approved emergency exit (not built) would
-# add its method name here, and nowhere else (BlockGate.cs header).
-$EndBlockCallers = @('RequestConfirm')
+# The methods allowed to call EndBlock(: "I prayed" and the v2 emergency exit (PLAN-v2 §2.3). Nothing else.
+$EndBlockCallers = @('RequestConfirm', 'RequestEmergencyExit')
 
 $GateFile    = 'GoPray.Core/BlockGate.cs'
 $Geocoder    = 'GoPray.App/Prayer/Geocoder.cs'
@@ -30,6 +29,8 @@ $SceneWeb    = 'GoPray.App/Shield/SceneWebView.cs'
 $KeyGuard    = 'GoPray.App/Shield/KeyboardGuard.cs'
 $MediaPauser = 'GoPray.App/Audio/MediaPauser.cs'
 $AppHider    = 'GoPray.App/Blocker/AppHider.cs'
+$Updater     = 'GoPray.App/Update/UpdateChecker.cs'
+$Ledger      = 'GoPray.Core/EmergencyLedger.cs'
 
 if (-not $Src) { $Src = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'src' }
 if (-not (Test-Path -LiteralPath $Src -PathType Container)) { Write-Output "guard: no source dir $Src"; exit 2 }
@@ -37,6 +38,34 @@ $Src = (Resolve-Path -LiteralPath $Src).Path
 
 $script:fail = $false
 function Bad([string]$m) { Write-Output "guard FAIL: $m"; $script:fail = $true }
+
+# A "//" inside a string literal ("https://api.github.com/…") is not a comment: cut at the first "//" outside
+# "…", @"…" and '…'. (Before v2 the cut was blind, which hid every URL from rules 4 and 14.)
+function StripLineComment([string]$s) {
+    $inStr = $false; $verbatim = $false; $i = 0
+    while ($i -lt $s.Length) {
+        $c = $s[$i]
+        if ($inStr) {
+            if ($verbatim) {
+                if ($c -eq '"') { if ($i + 1 -lt $s.Length -and $s[$i + 1] -eq '"') { $i += 2; continue }; $inStr = $false }
+            }
+            elseif ($c -eq '\') { $i += 2; continue }
+            elseif ($c -eq '"') { $inStr = $false }
+        }
+        elseif ($c -eq '"') {
+            $inStr = $true
+            $verbatim = ($i -gt 0 -and $s[$i - 1] -eq '@') -or ($i -gt 1 -and $s[$i - 1] -eq '$' -and $s[$i - 2] -eq '@')
+        }
+        elseif ($c -eq "'") {
+            # a char literal: 'x', '\'', '"'
+            if ($i + 2 -lt $s.Length -and $s[$i + 1] -eq '\') { $i += 4; continue }
+            if ($i + 2 -lt $s.Length -and $s[$i + 2] -eq "'") { $i += 3; continue }
+        }
+        elseif ($c -eq '/' -and $i + 1 -lt $s.Length -and $s[$i + 1] -eq '/') { return $s.Substring(0, $i) }
+        $i++
+    }
+    return $s
+}
 
 # --- Index every .cs line: file, line number, code with comments removed, and #if DEBUG depth. ---
 $lines = New-Object System.Collections.Generic.List[object]
@@ -63,7 +92,7 @@ foreach ($f in $files) {
             $code = $code.Substring(0, $start) + ' ' + $code.Substring($end + 2)
         }
         $sl = $code.IndexOf('//')
-        if ($sl -ge 0) { $code = $code.Substring(0, $sl) }
+        if ($sl -ge 0) { $code = StripLineComment $code }
 
         $t = $code.Trim()
         # Each #if level remembers its condition; a branch is DEBUG-only for "#if DEBUG" (if-branch)
@@ -100,12 +129,16 @@ $decl = @($eb | Where-Object { $_.Code -match '\bvoid\s+EndBlock\(' })
 if ($decl.Count -ne 1 -or $decl[0].Code -notmatch '^\s*private\s+void\s+EndBlock\(') { Bad "EndBlock must be declared exactly once, 'private void EndBlock('" }
 # Enclosing member = the last member declaration (4-space indent, access modifier) above the call.
 $gate = @($lines | Where-Object { $_.File -eq $GateFile })
-$current = ''
-$callers = New-Object System.Collections.Generic.List[string]
-foreach ($l in $gate) {
-    if ($l.Code -match '^ {4}(public|private|internal|protected)\b[^=;]*?\b([A-Za-z_]\w*)\s*\(') { $current = $Matches[2] }
-    if ($l.Code -match 'EndBlock\(' -and $l.Code -notmatch '\bvoid\s+EndBlock\(') { $callers.Add($current) }
+function GateCallers([string]$pat, [string]$declPat) {
+    $current = ''
+    $found = New-Object System.Collections.Generic.List[string]
+    foreach ($l in $gate) {
+        if ($l.Code -match '^ {4}(public|private|internal|protected)\b[^=;]*?\b([A-Za-z_]\w*)\s*\(') { $current = $Matches[2] }
+        foreach ($m in [regex]::Matches($l.Code, $pat)) { if ($l.Code -notmatch $declPat) { $found.Add($current) } }
+    }
+    , $found
 }
+$callers = GateCallers 'EndBlock\(' '\bvoid\s+EndBlock\('
 $bad = @($callers | Where-Object { $EndBlockCallers -notcontains $_ } | Sort-Object -Unique)
 if ($bad.Count -or $callers.Count -eq 0) { Bad "EndBlock( called from '$((@($callers) | Sort-Object -Unique) -join ',')', want only $($EndBlockCallers -join ', ')" }
 
@@ -123,8 +156,18 @@ $manifests = @(Get-ChildItem -LiteralPath $Src -Recurse -File -Include *.manifes
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } | Select-String -Pattern 'requireAdministrator|highestAvailable')
 if ($manifests.Count) { Bad "manifest/project asks for elevation: $(($manifests | Select-Object -First 3 | ForEach-Object { $_.Filename + ':' + $_.LineNumber }) -join ' ')" }
 
-# 4. Network: only the geocoder file.
-OnlyIn '\bHttpClient\b|\bWebRequest\b|\bWebClient\b|\bSocket\b|\bTcpClient\b|\bUdpClient\b' $Geocoder
+# 4. Network: only the geocoder and the update checker (PLAN-v2 §8.3). GitHub, signature checks and running an
+#    installer only in the update checker, and the pinned repo appears there exactly once. Process.Start only in
+#    the files that already need it (the logon task's schtasks, Credits' links) and the update checker.
+$net = @(Hits '\bHttpClient\b|\bWebRequest\b|\bWebClient\b|\bSocket\b|\bTcpClient\b|\bUdpClient\b|\bSocketsHttpHandler\b' | Where-Object { $_.File -ne $Geocoder -and $_.File -ne $Updater })
+if ($net.Count) { Bad "network API outside $Geocoder and ${Updater}: $(Show $net)" }
+OnlyIn 'WinVerifyTrust|CreateFromSignedFile|api\.github\.com|releases/download|GoPray-Setup|githubusercontent' $Updater
+$repo = Count 'simkinselgazar-rgb/go-pray'
+OnlyIn 'simkinselgazar-rgb/go-pray' $Updater
+if ($repo -gt 1) { Bad "the repo 'simkinselgazar-rgb/go-pray' appears $repo times (want it pinned once, in $Updater)" }
+if ($Strict -and $repo -ne 1) { Bad "-Strict: the repo 'simkinselgazar-rgb/go-pray' appears $repo times (want exactly 1)" }
+$ps = @(Hits 'Process\.Start\(' | Where-Object { @($Updater, 'GoPray.App/Launch/LogonTask.cs', 'GoPray.App/UI/CreditsWindow.cs') -notcontains $_.File })
+if ($ps.Count) { Bad "Process.Start( outside the update checker, LogonTask and Credits: $(Show $ps)" }
 
 # 5. WebView2: built, loaded and bridged only in the one locked-down file.
 OnlyIn 'new\s+WebView2\b|CoreWebView2Environment|EnsureCoreWebView2|ExecuteScriptAsync|AddScriptToExecuteOnDocumentCreatedAsync|WebMessageReceived|NavigateToString|\.Navigate\(' $SceneWeb
@@ -157,8 +200,18 @@ if ($Strict -and $tpn -ne 1) { Bad "-Strict: TryPauseAsync appears $tpn times (w
 OnlyIn '\bShowWindow(Async)?\s*\(' $AppHider
 
 # 10. Debug entry points stay behind #if DEBUG.
-$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_|--debug-|\bDebugMenu\b|\bDebugHarness\b|DebugCrashRenderer' | Where-Object { -not $_.Debug })
+$dbg = @(Hits 'DebugTriggerAthan|DebugWipeState|DebugWindowEnd|GOPRAY_DEBUG_|--debug-|\bDebugMenu\b|\bDebugHarness\b|DebugCrashRenderer|DebugSetEmergencyExitsUsed|DebugSetUsed|Emergency exits \(debug\)' | Where-Object { -not $_.Debug })
 if ($dbg.Count) { Bad "debug entry point outside #if DEBUG: $(Show $dbg)" }
+
+# 14. Emergency exits (PLAN-v2 §2.3): the ledger file and key are named only in EmergencyLedger.cs, and a use is
+#     recorded only by the ledger itself and by exactly one call in BlockGate.RequestEmergencyExit.
+OnlyIn 'emergency\.json|"EmergencyExitsUsed"' $Ledger
+$ru = @(Hits 'RecordUse\(' | Where-Object { $_.File -ne $Ledger -and $_.File -ne $GateFile })
+if ($ru.Count) { Bad "RecordUse( outside $Ledger and ${GateFile}: $(Show $ru)" }
+$ruCallers = GateCallers 'RecordUse\(' '\bvoid\s+RecordUse\('
+$ruBad = @($ruCallers | Where-Object { $_ -ne 'RequestEmergencyExit' } | Sort-Object -Unique)
+if ($ruBad.Count -or $ruCallers.Count -gt 1) { Bad "RecordUse( in BlockGate.cs called from '$((@($ruCallers) | Sort-Object -Unique) -join ',')' ($($ruCallers.Count) calls), want exactly one, in RequestEmergencyExit" }
+if ($Strict -and $ruCallers.Count -ne 1) { Bad "-Strict: RecordUse( must be called exactly once in BlockGate.RequestEmergencyExit (found $($ruCallers.Count))" }
 
 # 12. Core is pure: no Windows UI, registry or native calls (so the law is testable anywhere).
 $core = @($lines | Where-Object { $_.File -like 'GoPray.Core/*' -and $_.Code -match 'System\.Windows|Microsoft\.Win32|\bWindows\.(Media|UI|Foundation|System)\b|DllImport|LibraryImport|WinForms' })
@@ -182,7 +235,8 @@ if ($Release) {
         # name source files such as DebugHarness.cs; release.ps1 must not ship them (Phase 5).
         $bins = @(Get-ChildItem -LiteralPath $Release -Recurse -File | Where-Object { $_.Name -like 'GoPray*' -and @('.exe', '.dll') -contains $_.Extension.ToLowerInvariant() })
         if (-not $bins.Count) { Bad "-Release: no GoPray*.exe/.dll in $Release" }
-        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash', 'Trigger Athan now')
+        $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash', 'Trigger Athan now',
+                     'DebugSetEmergencyExitsUsed', 'DebugSetUsed', 'Emergency exits (debug)', '--exits-used', '--emergency-at')
         foreach ($b in $bins) {
             $bytes = [IO.File]::ReadAllBytes($b.FullName)
             $ascii = [Text.Encoding]::ASCII.GetString($bytes)

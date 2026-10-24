@@ -147,4 +147,33 @@ public static class Copy
     public const string InvalidLine = "That didn't look right. Try again.";
     /// <summary>Windows version of the Mac's LoginAgentCopy.firstRunNote (no system prompt on Windows).</summary>
     public const string LaunchAtLoginNote = "Go Pray adds itself to Task Scheduler so it starts when you sign in and comes back if it is closed. Turn this off to remove it.";
+
+    // v2 (PLAN-v2 §1.3, §9.2, §9.3, §8.1)
+    public const string BlockedAppsHelp = "Only these apps rest in Coding apps mode. Turn ours off, or add your own. Changes start at the next prayer.";
+    public const string BlockedAppsEmpty = "Nothing is on the list, so Coding apps mode rests nothing.";
+    public const string CantRestThat = "Go Pray can't rest that one. It's part of Windows.";
+    public const string AlreadyListed = "Already on the list.";
+    public const string AllowExitsHelp = "Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.";
+    public const string CheckForUpdatesHelp = "Once a day, from GitHub. Nothing about you is sent.";
+
+    /// <summary>"Emergency exits: 3 of 5 left this year" / "…: none left until 1 January" / "…: off".</summary>
+    public static string EmergencyLine(bool enabled, int left) =>
+        !enabled ? "Emergency exits: off"
+        : left <= 0 ? "Emergency exits: none left until 1 January"
+        : $"Emergency exits: {left} of {EmergencyExitPolicy.Total} left this year";
+
+    /// <summary>The shield footer: "Emergency exit · 3 of 5 left this year".</summary>
+    public static string EmergencyButton(int left) => $"Emergency exit · {left} of {EmergencyExitPolicy.Total} left this year";
+
+    public const string EmergencyHolding = "Keep holding…";
+    public const string EmergencyCardTitle = "Use an emergency exit?";
+
+    /// <summary>"This ends the block now. Asr will count as missed, not prayed. You'll have 2 of 5 left this year."</summary>
+    public static string EmergencyCardBody(Prayer p, int left) =>
+        $"This ends the block now. {Labels.PrayerName(p)} will count as missed, not prayed. "
+        + (left <= 1 ? "This is your last one this year." : $"You'll have {left - 1} of {EmergencyExitPolicy.Total} left this year.");
+
+    public const string EmergencyNotNow = "Not now";
+    public const string EmergencyUseIt = "Use it";
+    public const string EmergencyFailed = "Couldn't use the exit. Try again in a moment.";
 }

@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using GoPray.App.Update;
 using GoPray.Core;
 
 namespace GoPray.App.UI;
@@ -17,14 +18,16 @@ internal sealed class PopoverWindow : Window
 {
     readonly MenuModel _model;
     readonly Action _openSettings, _openSetup, _quit;
+    readonly UpdateChecker? _updates;
     readonly SceneBand _band = new(320, 96);
     readonly StackPanel _root = new() { Width = 320 };
     readonly DispatcherTimer _tick = new() { Interval = TimeSpan.FromSeconds(1) };
     public UIElement? DebugPanel { get; set; }
 
-    public PopoverWindow(MenuModel model, Action openSettings, Action openSetup, Action quit)
+    public PopoverWindow(MenuModel model, Action openSettings, Action openSetup, Action quit, UpdateChecker? updates = null)
     {
-        _model = model; _openSettings = openSettings; _openSetup = openSetup; _quit = quit;
+        _model = model; _openSettings = openSettings; _openSetup = openSetup; _quit = quit; _updates = updates;
+        if (updates != null) updates.Changed += () => Dispatcher.BeginInvoke(() => { if (IsVisible) Render(); });
         Title = "Go Pray";
         SizeToContent = SizeToContent.WidthAndHeight;       // the 320-wide content sets the size (an explicit Width is DPI-scaled wrongly off-monitor)
         WindowStyle = WindowStyle.None;
@@ -70,8 +73,15 @@ internal sealed class PopoverWindow : Window
                 Rows(snap);
                 _root.Children.Add(Theme.Divider());
                 ModeAndPlace(snap);
+                if (snap.EmergencyLine is { } exits)
+                {
+                    var e = Theme.Text(exits, 11, Theme.Secondary);
+                    e.Margin = new Thickness(Theme.S16, 0, Theme.S16, Theme.S12);
+                    _root.Children.Add(e);
+                }
                 break;
         }
+        UpdateRow(snap);
         _root.Children.Add(Theme.Divider());
         Actions(snap);
         if (DebugPanel != null)
@@ -157,6 +167,32 @@ internal sealed class PopoverWindow : Window
         Grid.SetColumn(quit, 1);
         g.Children.Add(settings); g.Children.Add(quit);
         _root.Children.Add(g);
+    }
+
+    /// <summary>"Update available: 0.2.0 — Download", or the checker's last line ("You're up to date." …). Disabled
+    /// during a block (the checker refuses then too).</summary>
+    void UpdateRow(MenuSnapshot snap)
+    {
+        if (_updates is not { } u) return;
+        UIElement? row = null;
+        if (u.Status == UpdateStatus.Available && u.Latest is { } r)
+        {
+            var link = Theme.Link($"Update available: {r.Version.ToString(3)} — Download", () => { _ = u.DownloadAndOpen(); });
+            link.IsEnabled = !snap.IsBlocked;
+            row = link;
+        }
+        else if (u.Message is { } m)
+        {
+            var p = new StackPanel();
+            p.Children.Add(Theme.Text(m, 11, Theme.Secondary));
+            if (u.Status == UpdateStatus.Failed)
+                p.Children.Add(Theme.Link("Open the releases page", UpdateChecker.OpenReleasesPage));
+            row = p;
+        }
+        if (row == null) return;
+        _root.Children.Add(Theme.Divider());
+        if (row is FrameworkElement fe) fe.Margin = new Thickness(Theme.S16, Theme.S8, Theme.S16, Theme.S8);
+        _root.Children.Add(row);
     }
 
     void Empty(string text, string button, Action action)

@@ -64,6 +64,10 @@ public sealed record MenuSnapshot
     public BlockMode Mode { get; init; }
     public string Footer { get; init; } = "";
     public bool IsBlocked { get; init; }
+    /// <summary>v2: "Emergency exits: 3 of 5 left this year" (setup done only).</summary>
+    public string? EmergencyLine { get; init; }
+    /// <summary>v2: "Update available: 0.2.0" when the update checker found one (set by the App, not Core).</summary>
+    public string? UpdateLine { get; init; }
 
     /// <summary>The header subtitle.</summary>
     public string Subtitle => BlockLine ?? PausedLine ?? (UntilNext is { } u ? "in " + TimeText.Duration(u) : "");
@@ -83,6 +87,7 @@ public sealed class MenuModel(SettingsStore store, BlockGate gate, IPrayerSchedu
         var s = store.Settings;
         var snap = new MenuSnapshot { Status = MenuStatus.Ready, Mode = s.Mode, Footer = Footer(s), IsBlocked = gate.IsBlocked };
         if (!s.SetupComplete) return snap with { Status = MenuStatus.NeedsSetup };
+        snap = snap with { EmergencyLine = Copy.EmergencyLine(s.EmergencyExitsEnabled, gate.EmergencyExitsRemaining) };
 
         if (s.IsPaused(now) && s.PausedUntil is { } until)
             snap = snap with { PausedLine = until == DateTimes.DistantFuture ? "Paused until you resume" : "Paused until " + TimeText.Day(until, _zone()) };

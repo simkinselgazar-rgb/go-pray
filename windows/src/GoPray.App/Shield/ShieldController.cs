@@ -11,6 +11,11 @@
 //   debounced 50 ms, retried every 100 ms) + the low-level keyboard hook while a whole-screen block is up.
 // - Coding-apps mode: one 420 x 520 notice on the primary monitor that never takes focus, no hook,
 //   no re-assert (the person keeps working in every other app).
+//
+// v2 emergency exit (PLAN-v2 §2): the page's `emergency` message and the native fallback's "Use it" only become
+// Delegate.ShieldDidRequestEmergencyExit(); the gate decides. Dismiss(kind: Emergency) is a plain close with no
+// "May Allah accept it.". Until bridge.js gains dismiss("emergency") (Mac lane), web slots are closed directly
+// instead of asking the page to fade, because today's page would show the accept line.
 
 using System;
 using System.Collections.Generic;
@@ -55,6 +60,7 @@ internal sealed class ShieldController : IShieldPresenting
         public long ShownAtMs { get; set; }
         public int ShownRemainingMs { get; set; }
         public string? ShownApp { get; set; }
+        public int ShownExits { get; set; }
         public bool AthanActive { get; set; }
         public bool NeedsReshow { get; set; }
         public bool IsMain => Layout != ShieldLayout.Art;
@@ -118,7 +124,8 @@ internal sealed class ShieldController : IShieldPresenting
             if (!slot.Ready || slot.Web == null || slot.Layout == ShieldLayout.Art) continue;
             long elapsed = Now - slot.ShownAtMs;
             long pageThinks = slot.ShownRemainingMs - elapsed;
-            if (slot.NeedsReshow || Math.Abs(pageThinks - ctx.RemainingMs) > 1500 || (hiddenChanged && slot.ShownApp != ctx.HiddenAppName))
+            if (slot.NeedsReshow || Math.Abs(pageThinks - ctx.RemainingMs) > 1500 || (hiddenChanged && slot.ShownApp != ctx.HiddenAppName)
+                || slot.ShownExits != ctx.EmergencyExitsLeft)
             {
                 SendShow(slot);
                 if (slot.Layout == ShieldLayout.Notice && hiddenChanged) slot.Window.RaiseToTop();
@@ -131,13 +138,21 @@ internal sealed class ShieldController : IShieldPresenting
         }
     }
 
-    public void Dismiss(Action thenIdle)
+    public void Dismiss(Action thenIdle, EndKind kind = EndKind.Confirmed)
     {
         if (!IsPresenting) { thenIdle(); return; }
         if (IsDismissing) { _dismissCompletion = thenIdle; return; }
         IsDismissing = true;
         _dismissCompletion = thenIdle;
         StopProtecting();    // the block is over: give the keyboard and the foreground back now
+        if (kind == EndKind.Emergency)
+        {
+            // Honest record: no accept line. The fallback goes blank, then everything closes on the next turn.
+            foreach (var slot in Slots) if (slot.Fallback != null) slot.Fallback.Leaving = true;
+            int myEpoch = _epoch;
+            _dismissTimer = After(TimeSpan.FromMilliseconds(150), () => { if (_epoch == myEpoch) FinishDismiss(); });
+            return;
+        }
         foreach (var slot in Slots)
         {
             if (slot.FellBack) { if (slot.IsMain && slot.Fallback != null) slot.Fallback.Accepting = true; }
@@ -225,6 +240,7 @@ internal sealed class ShieldController : IShieldPresenting
         slot.ShownAtMs = Now;
         slot.ShownRemainingMs = c.RemainingMs;
         slot.ShownApp = c.HiddenAppName;
+        slot.ShownExits = c.EmergencyExitsLeft;
         slot.AthanActive = c.AthanRemainingMs > 0;
         slot.NeedsReshow = false;
         web.Show(payload);
@@ -256,6 +272,11 @@ internal sealed class ShieldController : IShieldPresenting
             case BridgeMessage.Gone:
                 if (IsDismissing && slot.IsMain) FinishDismiss();
                 break;
+            case BridgeMessage.Emergency:
+                if (!slot.IsMain || !IsPresenting || IsDismissing) return;
+                slot.NeedsReshow = true;           // a refusal's Update re-syncs the page with the true count
+                Delegate?.ShieldDidRequestEmergencyExit();
+                break;
         }
     }
 
@@ -276,6 +297,7 @@ internal sealed class ShieldController : IShieldPresenting
             {
                 OnPrayed = () => { if (IsPresenting && !IsDismissing) Delegate?.ShieldDidRequestConfirm(); },
                 OnSilence = () => { if (IsPresenting && !IsDismissing) Delegate?.ShieldDidRequestSilence(); },
+                OnEmergency = () => { if (IsPresenting && !IsDismissing) Delegate?.ShieldDidRequestEmergencyExit(); },
             };
             slot.Fallback = model;
             slot.FallbackView = new NativeFallbackShield(model);

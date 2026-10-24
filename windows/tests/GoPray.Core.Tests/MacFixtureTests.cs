@@ -3,6 +3,7 @@
 
 using System;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using GoPray.Core;
@@ -14,8 +15,21 @@ public class MacFixtureTests
 {
     static string Fixture(string name) => Path.Combine(AppContext.BaseDirectory, "fixtures", name);
 
+    /// <summary>A 0.1.x Mac file re-encodes with the v2 keys added at their defaults (the Mac's v2 does the same):
+    /// those, and only those, are taken out of ours before comparing, and only when the Mac file lacks them.</summary>
     static void AssertSameJson(byte[] mac, byte[] ours)
     {
+        var macNode = System.Text.Json.Nodes.JsonNode.Parse(mac)!.AsObject();
+        var ourNode = System.Text.Json.Nodes.JsonNode.Parse(ours)!.AsObject();
+        static void DropDefaults(System.Text.Json.Nodes.JsonObject m, System.Text.Json.Nodes.JsonObject o, params (string Key, string Default)[] keys)
+        {
+            foreach (var (k, d) in keys)
+                if (!m.ContainsKey(k) && o[k] is { } v && v.ToJsonString() == d) o.Remove(k);
+        }
+        DropDefaults(macNode, ourNode, ("customApps", "[]"), ("disabledDefaultApps", "[]"), ("emergencyExitsEnabled", "true"), ("checkForUpdates", "true"));
+        if (macNode["block"] is System.Text.Json.Nodes.JsonObject mb && ourNode["block"] is System.Text.Json.Nodes.JsonObject ob)
+            DropDefaults(mb, ob, ("emergencyExitsEnabled", "true"));
+        ours = Encoding.UTF8.GetBytes(ourNode.ToJsonString());
         using var a = JsonDocument.Parse(mac);
         using var b = JsonDocument.Parse(ours);
         Assert.True(JsonElement.DeepEquals(a.RootElement, b.RootElement),
@@ -143,6 +157,55 @@ public class MacFixtureTests
         var idle = Encoding.UTF8.GetString(new BlockStateFile().Encode());
         Assert.Contains("\"schemaVersion\": 1", idle);
         Assert.DoesNotContain("lastConfirmed", idle);
+    }
+
+    // MARK: v2 (PLAN-v2 §4 brief item 5)
+
+    [Fact]
+    public void macV2SettingsDecodeAndReencodeTheSameJson()
+    {
+        var mac = File.ReadAllBytes(Fixture("mac-settings-v2.json"));
+        var s = SettingsRules.DecodeSettings(mac);
+        Assert.Equal(["com.apple.Safari", "msedge"], s.DisabledDefaultApps);
+        Assert.Equal([new CustomApp("com.figma.Desktop", "Figma", AppPlatform.Mac), new CustomApp("figma", "Figma", AppPlatform.Windows)], s.CustomApps);
+        Assert.False(s.EmergencyExitsEnabled);
+        Assert.False(s.CheckForUpdates);
+        Assert.Equal(s, s.Sanitized());                                     // nothing to clean in a Mac v2 file
+        using var a = JsonDocument.Parse(mac);
+        using var b = JsonDocument.Parse(s.Encode());
+        Assert.True(JsonElement.DeepEquals(a.RootElement, b.RootElement), Encoding.UTF8.GetString(s.Encode()));
+        Assert.Equal(["figma"], BlockedApps.Effective(s, ["msedge", "Code"]).Where(x => x != "code"));   // msedge off, the Mac app ignored
+    }
+
+    [Fact]
+    public void macV2BlockStateDecodesAndReencodesTheSameJson()
+    {
+        var mac = File.ReadAllBytes(Fixture("mac-state-block-v2.json"));
+        var s = BlockStateFile.Decode(mac);
+        Assert.Equal(["com.anthropic.claudefordesktop", "com.apple.Terminal", "figma"], s.CurrentBlock!.HiddenApps!);
+        Assert.True(s.CurrentBlock.EmergencyExitsEnabled);
+        using var a = JsonDocument.Parse(mac);
+        using var b = JsonDocument.Parse(s.Encode());
+        Assert.True(JsonElement.DeepEquals(a.RootElement, b.RootElement), Encoding.UTF8.GetString(s.Encode()));
+    }
+
+    [Fact]
+    public void macV01MidBlockStateResumesAndWritesHiddenApps()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "gopray-fixture-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        File.Copy(Fixture("mac-state-block.json"), Path.Combine(dir, "state.json"));
+        var started = new DateTime(2026, 10, 22, 19, 56, 0, DateTimeKind.Utc).AddMilliseconds(512);
+        var asr = new DateTime(2026, 10, 22, 19, 56, 0, DateTimeKind.Utc);
+        using var h = new Harness(started.AddMinutes(5), TestSettings.Test(BlockMode.CodingApps), dir: dir);
+        var gate = new BlockGate(h.Clock, new StateStore(dir), new OneWindowSchedule(new PrayerWindow(Prayer.Asr, asr, asr.AddHours(3))),
+                                 h.Shield, h.Audio, h.Hider, () => h.Settings, defaultApps: ["Cursor", "Code"]);
+        gate.Reevaluate(ReevalReason.Launch);
+        var written = BlockStateFile.Decode(File.ReadAllBytes(Path.Combine(dir, "state.json")));
+        Assert.Equal(["code", "cursor"], written.CurrentBlock!.HiddenApps!);
+        Assert.True(written.CurrentBlock.EmergencyExitsEnabled);
+        Assert.Equal(1200, written.CurrentBlock.LockSeconds);                // the captured lock is untouched
+        Assert.Equal(["code", "cursor"], h.Hider.Started.Last().OrderBy(x => x, StringComparer.Ordinal));
     }
 
     sealed class OneWindowSchedule(PrayerWindow w) : IPrayerScheduleProviding

@@ -2,7 +2,9 @@
 // Rules:
 //  - MINIMISE only (SW_MINIMIZE). Never close, kill or hide a window (SW_HIDE would drop its taskbar
 //    button: if we crashed it could not be brought back; a minimised window always can). guard rules 3 + 9.
-//  - Only top-level visible windows of listed processes, never our own.
+//  - Only top-level visible windows of the processes in the list the gate passes to Start (the list captured in
+//    state.json at block start, v2), never our own, never a BlockedApps.NeverBlock process (last line of defence:
+//    even a list that names explorer or Task Manager cannot hide them).
 //  - Re-minimise when one comes forward: EVENT_SYSTEM_FOREGROUND + a 250 ms poll (spike Q6: the event is
 //    ~3 s late for console and Windows Terminal windows).
 //  - Stop() does NOT restore anything: windows stay minimised until the person brings them back
@@ -34,22 +36,30 @@ internal interface IWindowSystem
     IDisposable Watch(Action<IntPtr> foreground);
 }
 
-internal sealed class AppHider(IWindowSystem? windows = null, Func<string, bool>? isListed = null) : IAppHiding
+internal sealed class AppHider(IWindowSystem? windows = null, Func<string, string>? displayName = null) : IAppHiding
 {
     readonly IWindowSystem _w = windows ?? new DesktopWindows();
-    readonly Func<string, bool> _listed = isListed ?? CodingApps.IsListed;
+    readonly Func<string, string> _name = displayName ?? CodingApps.DisplayName;
+    IReadOnlySet<string> _ids = new HashSet<string>();
     IDisposable? _watch;
 
     public Action<string>? OnReHide { get; set; }
     public int Minimised { get; private set; }
 
-    /// <summary>Safe to call more than once (block start, and again on a relaunch that resumes a block).</summary>
-    public void Start()
+    /// <summary>Hides only these ids (normalised process names). Safe to call more than once (block start, and again
+    /// on a relaunch that resumes a block).</summary>
+    public void Start(IReadOnlySet<string> ids)
     {
+        _ids = ids.Select(BlockedApps.Normalize).Where(i => !BlockedApps.NeverBlock.Contains(i)).ToHashSet(StringComparer.Ordinal);
         _watch ??= _w.Watch(OnForeground);
         foreach (var (h, p) in _w.TopLevel())
-            if (_listed(p)) Hide(h, p);
+            if (Listed(p)) Hide(h, p);
     }
+
+    bool Listed(string process) { var n = BlockedApps.Normalize(process); return _ids.Contains(n) && !BlockedApps.NeverBlock.Contains(n); }
+
+    /// <summary>Settings' "Add an app…" picker: the running apps with a visible window (process, window title), never ours.</summary>
+    public static IReadOnlyList<(string Process, string Title)> RunningApps() => new DesktopWindows().Titled();
 
     public void Stop()
     {
@@ -60,9 +70,9 @@ internal sealed class AppHider(IWindowSystem? windows = null, Func<string, bool>
     void OnForeground(IntPtr hwnd)
     {
         if (_watch == null || hwnd == IntPtr.Zero) return;               // after Stop(), late events are ignored
-        if (_w.ProcessOf(hwnd) is not { } p || !_listed(p) || _w.IsMinimised(hwnd)) return;
+        if (_w.ProcessOf(hwnd) is not { } p || !Listed(p) || _w.IsMinimised(hwnd)) return;
         Hide(hwnd, p);
-        OnReHide?.Invoke(CodingApps.DisplayName(p));
+        OnReHide?.Invoke(_name(p));
     }
 
     void Hide(IntPtr hwnd, string process)
@@ -85,6 +95,19 @@ internal sealed class AppHider(IWindowSystem? windows = null, Func<string, bool>
         [DllImport("user32.dll")] static extern bool ShowWindow(IntPtr h, int cmd);
         [DllImport("user32.dll")] static extern IntPtr GetAncestor(IntPtr h, uint flags);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowTextLength(IntPtr h);
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr h, StringBuilder s, int max);
+
+        public List<(string, string)> Titled()
+        {
+            var list = new List<(string, string)>();
+            foreach (var (h, p) in TopLevel())
+            {
+                var sb = new StringBuilder(256);
+                GetWindowText(h, sb, sb.Capacity);
+                list.Add((p, sb.ToString()));
+            }
+            return list;
+        }
 
         static readonly int Self = Environment.ProcessId;
 

@@ -8,6 +8,7 @@
 // quit on purpose in this logon session.
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -21,6 +22,7 @@ using GoPray.App.Places;
 using GoPray.App.Shield;
 using GoPray.App.Tray;
 using GoPray.App.UI;
+using GoPray.App.Update;
 using GoPray.Core;
 using Microsoft.Win32;
 
@@ -104,6 +106,9 @@ internal sealed class AppHost
     public ICityGeocoding Geocoder { get; } = new Geocoder();
     public BlockGate Gate { get; }
     public Scheduler Scheduler { get; }
+    public EmergencyLedger Ledger { get; }
+    public UpdateChecker Updates { get; }
+    DispatcherTimer? _updateTimer;
     TrayIcon? _tray;
     PopoverWindow? _popover;
     SetupWindow? _setup;
@@ -119,45 +124,83 @@ internal sealed class AppHost
         Schedule = new PrayerSchedule(() => store.Settings);
         Shield = new ShieldController { Log = CoreLog.Notice };
         Audio = new AthanPlayer();
-        Hider = new AppHider(isListed: HideList());
-        Gate = new BlockGate(Clock, new StateStore(dir), Schedule, Shield, Audio, Hider, () => store.Settings);
+        Hider = new AppHider(displayName: p => NameOf(store.Settings, p));
+        Ledger = new EmergencyLedger(dir);
+        Gate = new BlockGate(Clock, new StateStore(dir), Schedule, Shield, Audio, Hider, () => store.Settings,
+                             ledger: Ledger, defaultApps: DefaultApps());
         store.Attach(Gate);                                  // fail closed until this line
         var scheduler = Scheduler = new Scheduler(Clock, Schedule, Gate, () => store.Settings);
         store.OnChange = _ => scheduler.Handle(ReevalReason.SettingsChanged);
+        var gate = Gate;
+        Updates = new UpdateChecker(typeof(AppHost).Assembly.GetName().Version ?? new Version(0, 0, 0), dir,
+                                    () => gate.IsBlocked, () => store.Settings.CheckForUpdates, Clock, RunInstallerAndQuit);
     }
 
-    static Func<string, bool>? HideList()
+    /// <summary>The compiled-in defaults the gate turns into the captured list (v2: minus the ones turned off, plus custom).</summary>
+    static IEnumerable<string> DefaultApps()
     {
 #if DEBUG
         // DEBUG only: a test run can minimise only an app it started itself (the Mac's GoPrayDebugHideOnly).
         var only = Environment.GetEnvironmentVariable("GOPRAY_DEBUG_HIDE_ONLY");
         if (!string.IsNullOrWhiteSpace(only))
         {
-            var set = only.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var set = only.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
             CoreLog.Notice("DEBUG hide list override: " + string.Join(",", set));
-            return set.Contains;
+            return set;
         }
 #endif
-        return null;
+        return CodingApps.Names.Keys;
+    }
+
+    /// <summary>The notice's app name: the person's own label for a custom app, else the defaults table.</summary>
+    static string NameOf(Settings s, string process)
+    {
+        var n = BlockedApps.Normalize(process);
+        return s.CustomApps.FirstOrDefault(c => c.Platform == BlockedApps.Current && c.Id == n)?.Name ?? CodingApps.DisplayName(process);
+    }
+
+    /// <summary>A verified installer: run it and quit, only between prayers (the checker never gets here during a block).</summary>
+    void RunInstallerAndQuit(string setup)
+    {
+        if (!Gate.ShouldAllowQuit()) return;
+        try { UpdateChecker.RunInstaller(setup); }
+        catch (Exception e) { CoreLog.Error("installer did not start: " + e.Message); return; }
+        CoreLog.Notice("quit: running the update installer");
+        Shutdown();
+    }
+
+    void StartUpdateChecks()
+    {
+        Updates.ClearDownloads();
+        // 30 s after launch, then hourly ticks; the checker itself only goes out when the last check is 24 h old.
+        _updateTimer = new DispatcherTimer { Interval = UpdateChecker.FirstDelay };
+        _updateTimer.Tick += async (_, _) => { _updateTimer.Interval = TimeSpan.FromHours(1); await Updates.AutomaticCheck(); };
+        _updateTimer.Start();
     }
 
     void Start()
     {
         Gate.Reevaluate(ReevalReason.Launch);                // resume / wake rule / fail-open checks
         Scheduler.Start();
-        SystemEvents.PowerModeChanged += (_, e) => { if (e.Mode == PowerModes.Resume) _ui.BeginInvoke(() => Scheduler.Handle(ReevalReason.Wake)); };
+        SystemEvents.PowerModeChanged += (_, e) =>
+        {
+            if (e.Mode != PowerModes.Resume) return;
+            _ui.BeginInvoke(() => { Scheduler.Handle(ReevalReason.Wake); _ = Updates.AutomaticCheck(); });
+        };
         SystemEvents.SessionSwitch += (_, e) => { if (e.Reason == SessionSwitchReason.SessionUnlock) _ui.BeginInvoke(() => Scheduler.Handle(ReevalReason.Wake)); };
         SystemEvents.TimeChanged += (_, _) => _ui.BeginInvoke(() => { TimeZoneInfo.ClearCachedData(); Scheduler.Handle(ReevalReason.ClockChanged); });
 
         var model = new MenuModel(SettingsStore, Gate, Schedule, Clock);
-        _popover = new PopoverWindow(model, ShowSettings, ShowSetup, Quit);
+        _popover = new PopoverWindow(model, ShowSettings, ShowSetup, Quit, Updates);
 #if DEBUG
         if (Debug.DebugScreens.Wants(_args)) { Debug.DebugScreens.Run(this, _args, () => _app.Shutdown(0)); return; }
         _popover.DebugPanel = Debug.DebugMenu.Build(this);
         Debug.DebugMenu.SeedIfAsked(this, _args);
 #endif
-        _tray = new TrayIcon(() => _popover.ShowNearTray(), ShowSettings, ShowCredits, Quit, () => Gate.IsBlocked);
+        _tray = new TrayIcon(() => _popover.ShowNearTray(), ShowSettings, ShowCredits, Quit, () => Gate.IsBlocked,
+                             () => { _ = Updates.CheckNow(); _popover.ShowNearTray(); });
         ListenForShow();
+        StartUpdateChecks();
         RepairLogonTask();
         if (!SettingsStore.Settings.SetupComplete) ShowSetup();
     }
@@ -215,7 +258,7 @@ internal sealed class AppHost
         if (!SettingsStore.Settings.SetupComplete) { ShowSetup(); return; }
         if (_settings == null)
         {
-            _settings = new SettingsWindow(new SettingsModel(SettingsStore, Gate, Clock, Audio, Logon, Geocoder), ShowCredits);
+            _settings = new SettingsWindow(new SettingsModel(SettingsStore, Gate, Clock, Audio, Logon, Geocoder, defaultApps: CodingApps.Defaults), ShowCredits);
             _settings.Closing += (_, e) => { e.Cancel = true; _settings.Hide(); };    // reused, never destroyed
         }
         Present(_settings);
@@ -249,6 +292,7 @@ internal sealed class AppHost
 
     void Shutdown()
     {
+        _updateTimer?.Stop();
         Scheduler.Stop();
         Audio.Stop();
         _tray?.Dispose();

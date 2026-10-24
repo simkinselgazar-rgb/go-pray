@@ -3,6 +3,8 @@
 // which asks the gate first; the views only show the gate's answer ("Settings open again after you pray.").
 
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace GoPray.Core;
@@ -181,12 +183,14 @@ public sealed class SettingsModel
     readonly IClock _clock;
     readonly ILogonTask _logon;
     readonly Func<TimeZoneInfo> _zone;
+    readonly IReadOnlyList<(string Id, string Name)> _defaults;
 
     public SettingsModel(SettingsStore store, BlockGate gate, IClock clock, IAthanPlaying audio, ILogonTask logon,
-                         ICityGeocoding geocoder, Func<TimeZoneInfo>? zone = null)
+                         ICityGeocoding geocoder, Func<TimeZoneInfo>? zone = null, IReadOnlyList<(string Id, string Name)>? defaultApps = null)
     {
         _store = store; _gate = gate; _clock = clock; _logon = logon;
         _zone = zone ?? (() => TimeZoneInfo.Local);
+        _defaults = defaultApps ?? [];
         Search = new CitySearchModel(geocoder);
         Preview = new AthanPreview(audio, () => gate.IsBlocked);
     }
@@ -255,6 +259,62 @@ public sealed class SettingsModel
         PauseKind.UntilResumed => "Paused until you resume",
         _ => null,
     };
+
+    // MARK: v2 — Blocked apps (PLAN-v2 §1.3). Every change goes through Apply → Mutate → the gate.
+
+    /// <summary>One row of the list. Default rows have a switch; the person's own rows have Remove.</summary>
+    public sealed record AppRow(string Id, string Name, bool IsDefault, bool On);
+
+    public IReadOnlyList<AppRow> AppRows
+    {
+        get
+        {
+            var off = Settings.DisabledDefaultApps.Select(BlockedApps.Normalize).ToHashSet(StringComparer.Ordinal);
+            var rows = _defaults.Select(d => new AppRow(BlockedApps.Normalize(d.Id), d.Name, true, !off.Contains(BlockedApps.Normalize(d.Id)))).ToList();
+            rows.AddRange(Settings.CustomApps.Where(c => c.Platform == BlockedApps.Current).Select(c => new AppRow(c.Id, c.Name, false, true)));
+            return rows;
+        }
+    }
+
+    /// <summary>True when Coding apps mode would rest nothing (honour system, PLAN-v2 §1.1 rule 7).</summary>
+    public bool BlockedListEmpty => BlockedApps.Effective(Settings, _defaults.Select(d => d.Id)).Count == 0;
+
+    public void SetDefaultApp(string id, bool on)
+    {
+        var n = BlockedApps.Normalize(id);
+        Apply(s => s with
+        {
+            DisabledDefaultApps = on
+                ? s.DisabledDefaultApps.Where(x => BlockedApps.Normalize(x) != n).ToList()
+                : s.DisabledDefaultApps.Append(n).ToList(),
+        });
+    }
+
+    /// <summary>Add a picked app (an exe name or a running window's process). Never-blockable picks and duplicates
+    /// only set the notice line. A default that was turned off is turned back on.</summary>
+    public bool AddApp(string processOrExe, string? name)
+    {
+        var id = BlockedApps.Normalize(processOrExe);
+        if (id.Length == 0) return false;
+        if (BlockedApps.IsNeverBlock(id)) { Notice = Copy.CantRestThat; Changed?.Invoke(); return false; }
+        var row = AppRows.FirstOrDefault(r => r.Id == id);
+        if (row is { IsDefault: true, On: false }) { SetDefaultApp(id, true); return true; }
+        if (row != null) { Notice = Copy.AlreadyListed; Changed?.Invoke(); return false; }
+        var label = string.IsNullOrWhiteSpace(name) ? processOrExe.Trim() : name.Trim();
+        return Apply(s => s with { CustomApps = s.CustomApps.Append(new CustomApp(id, label, BlockedApps.Current)).ToList() });
+    }
+
+    public void RemoveApp(string id)
+    {
+        var n = BlockedApps.Normalize(id);
+        Apply(s => s with { CustomApps = s.CustomApps.Where(c => !(c.Platform == BlockedApps.Current && BlockedApps.Normalize(c.Id) == n)).ToList() });
+    }
+
+    // MARK: v2 — Emergency exits (PLAN-v2 §9.2) and updates (§8.1 rule 8)
+
+    public void SetEmergencyExitsEnabled(bool on) => Apply(s => s with { EmergencyExitsEnabled = on });
+    public string EmergencyLine => Copy.EmergencyLine(Settings.EmergencyExitsEnabled, _gate.EmergencyExitsRemaining);
+    public void SetCheckForUpdates(bool on) => Apply(s => s with { CheckForUpdates = on });
 
     /// <summary>"Automatic (Seventh of the night)" — the high-latitude rule the library would pick here.</summary>
     public string AutomaticRuleLabel

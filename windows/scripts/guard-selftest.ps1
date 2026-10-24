@@ -55,6 +55,7 @@ $okApp = @{
     'GoPray.App/Shield/KeyboardGuard.cs' = "class KeyboardGuard { void I() { h = SetWindowsHookEx(WH_KEYBOARD_LL, p, m, 0); } }"
     'GoPray.App/Blocker/AppHider.cs'    = "class AppHider { void M() { ShowWindow(h, SW_MINIMIZE); } }"
     'GoPray.App/Prayer/Geocoder.cs'     = "class Geocoder { static readonly HttpClient c = new(); }"
+    'GoPray.App/Update/UpdateChecker.cs' = "class UpdateChecker { const string Repo = ""simkinselgazar-rgb/go-pray""; static readonly HttpClient c = new(); Uri a = new(""https://api.github.com/x""); int V(string f) => WinVerifyTrust(f); void R(string s) => Process.Start(s); }"
 }
 
 # name, expect (OK|FAIL), message regex, setup { param($d) ... }
@@ -78,7 +79,12 @@ $cases = @(
     @{ N = 'rule 3: policy key'; E = 'FAIL'; M = 'DisableLockWorkstation'; S = { param($d) Put $d 'GoPray.App/X.cs' 'class X { string k = "DisableLockWorkstation"; }' } }
     @{ N = 'rule 3: TryPlayAsync'; E = 'FAIL'; M = 'TryPlayAsync'; S = { param($d) Put $d 'GoPray.App/Audio/MediaPauser.cs' 'class M { void R() { s.TryPlayAsync(); } }' } }
     @{ N = 'rule 3: requireAdministrator manifest'; E = 'FAIL'; M = 'elevation|requireAdministrator'; S = { param($d) Put $d 'GoPray.App/app.manifest' '<requestedExecutionLevel level="requireAdministrator" />' } }
-    @{ N = 'rule 4: HttpClient outside geocoder'; E = 'FAIL'; M = 'HttpClient'; S = { param($d) Put $d 'GoPray.App/UI/Credits.cs' 'class C { HttpClient c; }' } }
+    @{ N = 'rule 4: HttpClient outside geocoder'; E = 'FAIL'; M = 'network API outside'; S = { param($d) Put $d 'GoPray.App/UI/Credits.cs' 'class C { HttpClient c; }' } }
+    @{ N = 'rule 4: HttpClient in the tray popover'; E = 'FAIL'; M = 'network API outside'; S = { param($d) Put $d 'GoPray.App/UI/PopoverWindow.cs' 'class P { static readonly HttpClient c = new(); }' } }
+    @{ N = 'rule 4: a second api.github.com literal'; E = 'FAIL'; M = 'api\\.github\\.com'; S = { param($d) Put $d 'GoPray.App/App/AppHost.cs' 'class A { string u = "https://api.github.com/repos/x"; }' } }
+    @{ N = 'rule 4: WinVerifyTrust outside the updater'; E = 'FAIL'; M = 'WinVerifyTrust'; S = { param($d) Put $d 'GoPray.App/Native/Win32.cs' 'class W { static extern int WinVerifyTrust(nint h, Guid a, nint d); }' } }
+    @{ N = 'rule 4: repo pinned twice'; E = 'FAIL'; M = 'appears 2 times'; S = { param($d) Put $d 'GoPray.App/Update/UpdateChecker.cs' ($okApp['GoPray.App/Update/UpdateChecker.cs'] + "`nclass U2 { string r = ""simkinselgazar-rgb/go-pray""; }") } }
+    @{ N = 'rule 4: Process.Start in Settings'; E = 'FAIL'; M = 'Process\.Start\( outside'; S = { param($d) Put $d 'GoPray.App/UI/SettingsWindow.cs' 'class S { void R(string p) { Process.Start(p); } }' } }
     @{ N = 'rule 5: ExecuteScriptAsync outside SceneWebView'; E = 'FAIL'; M = 'outside GoPray.App/Shield/SceneWebView.cs'; S = { param($d) Put $d 'GoPray.App/Shield/ShieldWindow.cs' 'class W { void J() { core.ExecuteScriptAsync("1"); } }' } }
     @{ N = 'rule 5: second virtual host'; E = 'FAIL'; M = 'appears 2 times'; S = { param($d) Put $d 'GoPray.App/Shield/SceneWebView.cs' ($okApp['GoPray.App/Shield/SceneWebView.cs'] + "`nclass Y { void L() { core.SetVirtualHostNameToFolderMapping(""b"", scenesFolder, CoreWebView2HostResourceAccessKind.Deny); } }") } }
     @{ N = 'rule 5: virtual host with Allow'; E = 'FAIL'; M = 'Deny'; S = { param($d) Put $d 'GoPray.App/Shield/SceneWebView.cs' 'class S { void L() { core.SetVirtualHostNameToFolderMapping("h", scenesFolder, CoreWebView2HostResourceAccessKind.Allow); } }' } }
@@ -96,6 +102,12 @@ $cases = @(
     @{ N = 'rule 10: debug entry inside #if DEBUG passes'; E = 'OK'; M = 'guard: OK'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' "#if DEBUG`nclass T { void M() { gate.DebugTriggerAthan(p, 20); } }`n#endif" } }
     @{ N = 'rule 10: debug state field outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Edit-File $d 'GoPray.Core/BlockState.cs' "#if DEBUG`n            if (b.DebugWindowEnd" "#if RELEASE_PROBE`n#endif`n            if (b.DebugWindowEnd" } }
     @{ N = 'rule 10: debug harness outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Put $d 'GoPray.App/App/Extra.cs' 'class E { void M(string[] a) { Debug.DebugHarness.Run(a); } }' } }
+    @{ N = 'rule 10: set exits used outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' 'class T { void M() { gate.DebugSetEmergencyExitsUsed(0); } }' } }
+    @{ N = 'rule 1: EndBlock called from RequestSilence'; E = 'FAIL'; M = 'EndBlock\( (appears|called from)'; S = { param($d) Edit-File $d 'GoPray.Core/BlockGate.cs' "        _audio.Stop();`n        if (!b.Silenced)" "        _audio.Stop();`n        EndBlock(EndKind.Emergency);`n        if (!b.Silenced)" } }
+    @{ N = 'rule 14: RecordUse( in the tray'; E = 'FAIL'; M = 'RecordUse\( outside'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' 'class T { void M() { ledger.RecordUse(u); } }' } }
+    @{ N = 'rule 14: RecordUse( from another gate method'; E = 'FAIL'; M = 'RecordUse\( in BlockGate.cs called from'; S = { param($d) Edit-File $d 'GoPray.Core/BlockGate.cs' "        _audio.Stop();`n        if (!b.Silenced)" "        _audio.Stop();`n        _ledger?.RecordUse(new EmergencyLedger.Use(b.Prayer, b.AthanAt, _clock.Now));`n        if (!b.Silenced)" } }
+    @{ N = 'rule 14: emergency.json named outside the ledger'; E = 'FAIL'; M = 'emergency'; S = { param($d) Put $d 'GoPray.App/App/Extra.cs' 'class E { string f = "emergency.json"; }' } }
+    @{ N = 'rule 14: -Strict needs the one RecordUse call'; E = 'FAIL'; M = '-Strict: RecordUse'; X = @('-Strict'); S = { param($d) foreach ($k in $okApp.Keys) { Put $d $k $okApp[$k] }; Edit-File $d 'GoPray.Core/BlockGate.cs' '        try { _ledger.RecordUse(new EmergencyLedger.Use(b.Prayer, b.AthanAt, _clock.Now)); }' '        try { }' } }
     @{ N = 'rule 11: one flipped byte in the shipped scenes'; E = 'FAIL'; M = 'ui.js differs'; S = { param($d) $p = Join-Path $d 'GoPray.App/Resources/scenes/ui.js'; if (-not (Test-Path $p)) { throw 'selftest setup: build the app first (no synced scenes)' }; $b = [IO.File]::ReadAllBytes($p); $b[[int]($b.Length / 2)] = $b[[int]($b.Length / 2)] -bxor 1; [IO.File]::WriteAllBytes($p, $b) } }
     @{ N = 'rule 11: an unlisted file in the shipped scenes'; E = 'FAIL'; M = 'not in the manifest'; S = { param($d) Put $d 'GoPray.App/Resources/scenes/evil.js' 'fetch(1)' } }
     @{ N = 'rule 12: Core uses WPF'; E = 'FAIL'; M = 'GoPray.Core must not'; S = { param($d) Put $d 'GoPray.Core/Ui.cs' 'using System.Windows.Threading; class U {}' } }

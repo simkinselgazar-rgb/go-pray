@@ -63,6 +63,7 @@ public sealed class FakeShield : IShieldPresenting
     public List<ShieldContext> Shows { get; } = [];
     public List<ShieldContext> Updates { get; } = [];
     public int DismissCount { get; private set; }
+    public List<EndKind> DismissKinds { get; } = [];
     public int TearDownCount { get; private set; }
     /// <summary>true: dismiss completes at once. false: held in PendingDismiss.</summary>
     public bool AutoCompleteDismiss { get; set; } = true;
@@ -70,9 +71,10 @@ public sealed class FakeShield : IShieldPresenting
 
     public void Show(ShieldContext ctx) => Shows.Add(ctx);
     public void Update(ShieldContext ctx) => Updates.Add(ctx);
-    public void Dismiss(Action thenIdle)
+    public void Dismiss(Action thenIdle, EndKind kind = EndKind.Confirmed)
     {
         DismissCount++;
+        DismissKinds.Add(kind);
         if (AutoCompleteDismiss) thenIdle(); else PendingDismiss = thenIdle;
     }
     public void TearDown() => TearDownCount++;
@@ -106,7 +108,9 @@ public sealed class FakeHider : IAppHiding
     public Action<string>? OnReHide { get; set; }
     public int StartCount { get; private set; }
     public int StopCount { get; private set; }
-    public void Start() => StartCount++;
+    /// <summary>The ids of every Start, in order.</summary>
+    public List<IReadOnlySet<string>> Started { get; } = [];
+    public void Start(IReadOnlySet<string> ids) { StartCount++; Started.Add(ids); }
     public void Stop() => StopCount++;
 }
 
@@ -134,6 +138,10 @@ public sealed class Harness : IDisposable
     public FakeAudio Audio { get; private set; } = new();
     public FakeHider Hider { get; private set; } = new();
     public BlockGate Gate { get; private set; } = null!;
+    /// <summary>v2: the compiled-in defaults the gate captures from (a small fixed list).</summary>
+    public static readonly string[] Defaults = ["Code", "cursor", "chrome", "WindowsTerminal"];
+    public string MirrorDir => Path.Combine(Dir, "mirror");
+    public EmergencyLedger Ledger => new(Dir, MirrorDir, TimeZoneInfo.Utc);
 
     public Harness(DateTime start, Settings? settings = null, string? dir = null)
     {
@@ -145,7 +153,8 @@ public sealed class Harness : IDisposable
 
     public void MakeGate() =>
         Gate = new BlockGate(Clock, new StateStore(Dir), Schedule, Shield, Audio, Hider, () => Settings,
-                             leavingTimeout: TimeSpan.FromMilliseconds(200), systemReduceMotion: () => false);
+                             leavingTimeout: TimeSpan.FromMilliseconds(200), systemReduceMotion: () => false,
+                             ledger: Ledger, defaultApps: Defaults);
 
     /// <summary>New process: fresh fakes, same file on disk, then the launch re-evaluation.</summary>
     public void Relaunch()

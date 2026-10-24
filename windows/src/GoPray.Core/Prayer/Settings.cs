@@ -40,11 +40,17 @@ public static class SettingsRules
 
     /// <summary>Clamp what has a natural range: break length 10–30, volume 0–1. A NaN volume falls back
     /// to the default. Everything else is checked by Validate().</summary>
-    public static Settings Sanitized(this Settings s) => s with
+    public static Settings Sanitized(this Settings s)
     {
-        LockMinutes = LockPolicy.Clamp(s.LockMinutes),
-        AthanVolume = float.IsFinite(s.AthanVolume) ? Math.Min(Math.Max(s.AthanVolume, 0f), 1f) : Defaults.AthanVolume,
-    };
+        var (disabled, custom) = BlockedApps.Sanitize(s.DisabledDefaultApps, s.CustomApps);
+        return s with
+        {
+            LockMinutes = LockPolicy.Clamp(s.LockMinutes),
+            AthanVolume = float.IsFinite(s.AthanVolume) ? Math.Min(Math.Max(s.AthanVolume, 0f), 1f) : Defaults.AthanVolume,
+            DisabledDefaultApps = disabled,
+            CustomApps = custom,
+        };
+    }
 
     /// <summary>Throws for values that cannot be turned into a schedule. Never repairs them.</summary>
     public static void Validate(this Settings s)
@@ -64,7 +70,23 @@ public static class SettingsRules
         using var w = SwiftJson.Writer(out var buffer);
         w.WriteStartObject();
         w.WriteNumber("athanVolume", s.AthanVolume);
+        w.WriteBoolean("checkForUpdates", s.CheckForUpdates);
         w.WriteString("city", s.City);
+        // v2 keys are always written, even empty (the Mac's non-optional fields), in sorted position.
+        w.WriteStartArray("customApps");
+        foreach (var a in s.CustomApps)
+        {
+            w.WriteStartObject();
+            w.WriteString("id", a.Id);
+            w.WriteString("name", a.Name);
+            w.WriteString("platform", SwiftJson.Name(a.Platform));
+            w.WriteEndObject();
+        }
+        w.WriteEndArray();
+        w.WriteStartArray("disabledDefaultApps");
+        foreach (var d in s.DisabledDefaultApps) w.WriteStringValue(d);
+        w.WriteEndArray();
+        w.WriteBoolean("emergencyExitsEnabled", s.EmergencyExitsEnabled);
         if (s.HighLatitudeRule is { } r) w.WriteString("highLatitudeRule", r);
         w.WriteNumber("latitude", s.Latitude);
         w.WriteBoolean("launchAtLogin", s.LaunchAtLogin);
@@ -103,6 +125,20 @@ public static class SettingsRules
             ReduceMotion = SwiftJson.Optional(o, "reduceMotion") is { } rm ? SwiftJson.Bool(rm) : null,
             LockMinutes = SwiftJson.Int(SwiftJson.Required(o, "lockMinutes")),
             PausedUntil = SwiftJson.Optional(o, "pausedUntil") is { } p ? SwiftJson.Date(p) : null,
+            // v2 keys: absent in a 0.1.x file → [] / true (Swift decodeIfPresent).
+            DisabledDefaultApps = SwiftJson.Optional(o, "disabledDefaultApps") is { } dd
+                ? SwiftJson.Array(dd, "disabledDefaultApps").Select(SwiftJson.String).ToList() : [],
+            CustomApps = SwiftJson.Optional(o, "customApps") is { } ca
+                ? SwiftJson.Array(ca, "customApps").Select(ReadCustomApp).ToList() : [],
+            EmergencyExitsEnabled = SwiftJson.Optional(o, "emergencyExitsEnabled") is not { } ee || SwiftJson.Bool(ee),
+            CheckForUpdates = SwiftJson.Optional(o, "checkForUpdates") is not { } cu || SwiftJson.Bool(cu),
         };
+    }
+
+    static CustomApp ReadCustomApp(JsonElement e)
+    {
+        var o = SwiftJson.Object(e, "customApp");
+        return new CustomApp(SwiftJson.String(SwiftJson.Required(o, "id")), SwiftJson.String(SwiftJson.Required(o, "name")),
+                             SwiftJson.ParsePlatform(SwiftJson.Required(o, "platform")));
     }
 }

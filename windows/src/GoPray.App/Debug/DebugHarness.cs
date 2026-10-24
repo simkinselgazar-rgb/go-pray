@@ -9,6 +9,10 @@
 //
 //   GoPray.exe --debug-shield [--prayer dhuhr] [--mode wholeScreen|codingApps] [--lock 8] [--cap 15]
 //              [--click-early-at 3] [--crash-at 4] [--click-at 10] [--log <file>]
+//              [--exits-used 0..5] [--exits-off] [--emergency-at 6] [--emergency-hold-at 4]
+// v2: the emergency ledger lives in the run's temp state folder (never the real %LOCALAPPDATA% / %APPDATA% ones).
+// --emergency-at asks the gate the way the shield does; --emergency-hold-at drives the native fallback's own hold
+// (needs --crash-at first) and presses "Use it" on its card.
 
 #if DEBUG
 using System;
@@ -65,7 +69,7 @@ internal static class DebugHarness
     sealed class NoHider : IAppHiding
     {
         public Action<string>? OnReHide { get; set; }
-        public void Start() { }
+        public void Start(System.Collections.Generic.IReadOnlySet<string> ids) { }
         public void Stop() { }
     }
 
@@ -89,13 +93,16 @@ internal static class DebugHarness
         var shield = new ShieldController(new ShieldOptions { Web = new SceneWebView.Options { UserDataFolder = Path.Combine(Path.GetTempPath(), "gopray-debug-webview2") } }) { Log = m => Log("shield: " + m) };
         IAthanPlaying audio = Array.IndexOf(a, "--real-audio") >= 0 ? new Audio.AthanPlayer() : new NoAudio();
         var hideOnly = Arg(a, "--hide-only", "");
-        IAppHiding hider = hideOnly.Length > 0
-            ? new Blocker.AppHider(isListed: p => hideOnly.Split(",").Any(x => string.Equals(x, p, StringComparison.OrdinalIgnoreCase)))
-            : new NoHider();
-        var gate = new BlockGate(new SystemClock(), new StateStore(stateDir), new NoSchedule(), shield, audio, hider, () => settings);
+        IAppHiding hider = hideOnly.Length > 0 ? new Blocker.AppHider() : new NoHider();
+        if (Array.IndexOf(a, "--exits-off") >= 0) settings = settings with { EmergencyExitsEnabled = false };
+        var ledger = new EmergencyLedger(stateDir, Path.Combine(stateDir, "mirror"));
+        var clock = new SystemClock();
+        if (Num(a, "--exits-used", -1) is var used && used >= 0) ledger.DebugSetUsed((int)used, clock.Now);
+        var gate = new BlockGate(clock, new StateStore(stateDir), new NoSchedule(), shield, audio, hider, () => settings,
+                                 ledger: ledger, defaultApps: hideOnly.Split(',', StringSplitOptions.RemoveEmptyEntries));
         hider.OnReHide += n => Log($"hider: re-minimised {n}");
         CoreLog.Sink = m => Log("core: " + m);
-        Log($"start prayer={prayer} mode={mode} lock={lockS}s cap={cap}s monitors={Displays.Live().Count} hookBefore={KeyboardGuard.IsInstalled}");
+        Log($"start prayer={prayer} mode={mode} lock={lockS}s cap={cap}s monitors={Displays.Live().Count} hookBefore={KeyboardGuard.IsInstalled} exitsLeft={ledger.Remaining(clock.Now)} exitsEnabled={settings.EmergencyExitsEnabled}");
 
         void At(double s, Action act)
         {
@@ -172,6 +179,30 @@ internal static class DebugHarness
             At(Num(a, "--silence-at", 0), () => { gate.RequestSilence(); Log($"silence: audio playing={audio.IsPlaying} phase={gate.Phase.Kind} (the block goes on)"); });
             At(1.5, () => Log($"audio after 1.5 s: playing={audio.IsPlaying} remainingMs={audio.RemainingMs()}" + (audio is Audio.AthanPlayer ap ? $" position={ap.Position:0.00}s" : "")));
             At(Num(a, "--click-at", 0), () => Click("after lock"));
+            At(Num(a, "--emergency-at", 0), () =>
+            {
+                var before = ledger.Remaining(clock.Now);
+                gate.ShieldDidRequestEmergencyExit();
+                Log($"emergency: asked; phase={gate.Phase.Kind} exitsLeft {before}->{ledger.Remaining(clock.Now)} lastDropped={gate.State.LastDropped?.Prayer} lastConfirmed={gate.State.LastConfirmed?.Prayer} hook={KeyboardGuard.IsInstalled}");
+            });
+            At(Num(a, "--emergency-hold-at", 0), () =>
+            {
+                if (shield.Slots.FirstOrDefault(x => x.IsMain)?.FallbackView is not { } fv) { Log("emergency-hold: no fallback view"); return; }
+                Log($"emergency-hold: footer visible={fv.ExitVisible} text='{fv.ExitText}'");
+                fv.BeginHold();
+                var t0 = sw.Elapsed;
+                var w = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                w.Tick += (_, _) =>
+                {
+                    if (!fv.CardOpen) return;
+                    w.Stop();
+                    Log($"emergency-hold: card after {(sw.Elapsed - t0).TotalMilliseconds:0} ms: '{fv.CardBody}'");
+                    var before = ledger.Remaining(clock.Now);
+                    fv.PressUseIt();
+                    Log($"emergency-hold: Use it; phase={gate.Phase.Kind} exitsLeft {before}->{ledger.Remaining(clock.Now)} lastDropped={gate.State.LastDropped?.Prayer}");
+                };
+                w.Start();
+            });
             At(cap, () =>
             {
                 if (shield.IsPresenting) { Log("CAP reached: debug safety tear-down"); shield.TearDown(); }

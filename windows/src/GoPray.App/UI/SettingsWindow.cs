@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Threading;
+using GoPray.App.Blocker;
 using GoPray.Core;
 
 namespace GoPray.App.UI;
@@ -94,6 +95,46 @@ internal sealed class SettingsWindow : Window
         lockRow.Children.Add(lockSlider);
         block.Children.Add(Row("Break length", lockRow));
         block.Children.Add(Theme.Help(SettingsModel.BreakHelp));
+        var exits = new CheckBox { Content = "Allow emergency exits", IsChecked = s.EmergencyExitsEnabled, FontSize = 13, Margin = new Thickness(0, Theme.S12, 0, 0) };
+        exits.Click += (_, _) => _m.SetEmergencyExitsEnabled(exits.IsChecked == true);
+        block.Children.Add(exits);
+        block.Children.Add(Theme.Help(Copy.AllowExitsHelp));
+        block.Children.Add(Theme.Help(_m.EmergencyLine));
+
+        // Blocked apps (v2, PLAN-v2 §1.3): defaults with a switch, the person's own with Remove, then "Add an app…".
+        var apps = Group(groups, "Blocked apps");
+        apps.Children.Add(Theme.Help(Copy.BlockedAppsHelp));
+        foreach (var row in _m.AppRows)
+        {
+            var line = new DockPanel { Margin = new Thickness(0, Theme.S4, 0, 0) };
+            if (row.IsDefault)
+            {
+                var on = new CheckBox { IsChecked = row.On, VerticalAlignment = VerticalAlignment.Center };
+                System.Windows.Automation.AutomationProperties.SetName(on, row.Name);
+                var id = row.Id;
+                on.Click += (_, _) => _m.SetDefaultApp(id, on.IsChecked == true);
+                DockPanel.SetDock(on, Dock.Right);
+                line.Children.Add(on);
+                line.Children.Add(Theme.Text(row.Name, 13, wrap: false));
+            }
+            else
+            {
+                var id = row.Id;
+                var remove = Theme.Button("Remove", () => _m.RemoveApp(id));
+                DockPanel.SetDock(remove, Dock.Right);
+                line.Children.Add(remove);
+                var text = new StackPanel();
+                text.Children.Add(Theme.Text(row.Name, 13, wrap: false));
+                text.Children.Add(new TextBlock { Text = row.Id, FontFamily = Theme.Mono, FontSize = 11, Foreground = Theme.Secondary });
+                line.Children.Add(text);
+            }
+            apps.Children.Add(line);
+        }
+        var add = Theme.Button("Add an app…", AddApp);
+        add.HorizontalAlignment = HorizontalAlignment.Left;
+        add.Margin = new Thickness(0, Theme.S12, 0, 0);
+        apps.Children.Add(add);
+        if (_m.BlockedListEmpty) apps.Children.Add(Theme.Help(Copy.BlockedAppsEmpty));
 
         // Pause
         var pause = Group(groups, "Pause");
@@ -135,6 +176,10 @@ internal sealed class SettingsWindow : Window
         login.Click += (_, _) => _m.SetLaunchAtLogin(login.IsChecked == true);
         general.Children.Add(login);
         if (!s.LaunchAtLogin) general.Children.Add(Theme.Help(Copy.LaunchAtLoginNote));
+        var updates = new CheckBox { Content = "Check for updates automatically", IsChecked = s.CheckForUpdates, FontSize = 13, Margin = new Thickness(0, Theme.S12, 0, 0) };
+        updates.Click += (_, _) => _m.SetCheckForUpdates(updates.IsChecked == true);
+        general.Children.Add(updates);
+        general.Children.Add(Theme.Help(Copy.CheckForUpdatesHelp));
         var credits = Theme.Link("Credits and thanks", _showCredits);
         credits.Margin = new Thickness(0, Theme.S12, 0, 0);
         general.Children.Add(credits);
@@ -165,6 +210,70 @@ internal sealed class SettingsWindow : Window
         p.Children.Add(buttons);
         dlg.Content = p;
         dlg.ShowDialog();
+    }
+
+    /// <summary>"Add an app…": a running app with a window, or Browse… for an .exe. Never a typed name (PLAN-v2 §1.1 rule 5).</summary>
+    void AddApp()
+    {
+        var dlg = new Window
+        {
+            Title = "Add an app", Width = 420, Height = 460, ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, FontFamily = Theme.Body, Background = Brushes.White,
+        };
+        var p = new DockPanel { Margin = new Thickness(Theme.S24) };
+        var h = Theme.Heading("Pick a running app");
+        h.Margin = new Thickness(0, 0, 0, Theme.S12);
+        DockPanel.SetDock(h, Dock.Top);
+        p.Children.Add(h);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, Theme.S16, 0, 0) };
+        DockPanel.SetDock(buttons, Dock.Bottom);
+        p.Children.Add(buttons);
+        var list = new ListBox { MinHeight = 200 };
+        foreach (var g in AppHider.RunningApps().GroupBy(a => BlockedApps.Normalize(a.Process)).OrderBy(g => g.Key))
+        {
+            if (BlockedApps.NeverBlock.Contains(g.Key)) continue;
+            var first = g.First();
+            var title = g.Select(a => a.Title).FirstOrDefault(t => t.Length > 0) ?? first.Process;
+            var item = new StackPanel();
+            item.Children.Add(Theme.Text(title.Length > 50 ? title[..50] + "…" : title, 13, wrap: false));
+            item.Children.Add(new TextBlock { Text = first.Process + ".exe", FontFamily = Theme.Mono, FontSize = 11, Foreground = Theme.Secondary });
+            list.Items.Add(new ListBoxItem { Content = item, Tag = (first.Process, ExeName(first.Process)) });
+        }
+        p.Children.Add(list);
+        var browse = Theme.Button("Browse…", () =>
+        {
+            var open = new Microsoft.Win32.OpenFileDialog { Filter = "Apps (*.exe)|*.exe", Title = "Choose an app" };
+            if (open.ShowDialog(dlg) != true) return;
+            string? name = null;
+            try { name = System.Diagnostics.FileVersionInfo.GetVersionInfo(open.FileName).FileDescription; } catch (System.IO.IOException) { }
+            _m.AddApp(System.IO.Path.GetFileNameWithoutExtension(open.FileName), name);
+            dlg.Close();
+        });
+        var cancel = Theme.Button("Cancel", dlg.Close);
+        cancel.IsCancel = true;
+        cancel.Margin = new Thickness(Theme.S8, 0, 0, 0);
+        var addIt = Theme.Button("Add", () =>
+        {
+            if (list.SelectedItem is ListBoxItem { Tag: ValueTuple<string, string?> pick }) _m.AddApp(pick.Item1, pick.Item2);
+            dlg.Close();
+        }, primary: true);
+        addIt.IsDefault = true;
+        addIt.Margin = new Thickness(Theme.S8, 0, 0, 0);
+        buttons.Children.Add(browse); buttons.Children.Add(cancel); buttons.Children.Add(addIt);
+        dlg.Content = p;
+        dlg.ShowDialog();
+    }
+
+    /// <summary>The friendly name of a running process's exe (FileDescription), if Windows lets us read it.</summary>
+    static string? ExeName(string process)
+    {
+        try
+        {
+            var ps = System.Diagnostics.Process.GetProcessesByName(process);
+            try { return ps.Select(x => { try { return x.MainModule?.FileVersionInfo.FileDescription; } catch (Exception) { return null; } }).FirstOrDefault(d => !string.IsNullOrWhiteSpace(d)); }
+            finally { foreach (var x in ps) x.Dispose(); }
+        }
+        catch (Exception) { return null; }
     }
 
     static StackPanel Group(Panel parent, string title)

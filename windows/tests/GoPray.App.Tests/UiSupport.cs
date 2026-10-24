@@ -66,10 +66,11 @@ internal static class Ui
 
 internal sealed class SpyDelegate : IShieldDelegate
 {
-    public int Confirms, Silences;
+    public int Confirms, Silences, Emergencies;
     public Action? OnConfirm;
     public void ShieldDidRequestConfirm() { Confirms++; OnConfirm?.Invoke(); }
     public void ShieldDidRequestSilence() => Silences++;
+    public void ShieldDidRequestEmergencyExit() => Emergencies++;
 }
 
 internal static class Fixture

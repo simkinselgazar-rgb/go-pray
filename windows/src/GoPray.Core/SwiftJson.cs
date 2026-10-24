@@ -100,6 +100,14 @@ internal static partial class SwiftJson
         var s => throw new FormatException($"unknown mode {s}"),
     };
 
+    public static string Name(AppPlatform p) => p == AppPlatform.Mac ? "mac" : "windows";
+
+    public static AppPlatform ParsePlatform(JsonElement e) => String(e) switch
+    {
+        "mac" => AppPlatform.Mac, "windows" => AppPlatform.Windows,
+        var s => throw new FormatException($"unknown platform {s}"),
+    };
+
     public static void WriteVoice(Utf8JsonWriter w, string key, Voice v)
     {
         w.WriteStartObject(key);
