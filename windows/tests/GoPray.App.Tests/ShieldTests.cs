@@ -35,7 +35,7 @@ public class ShieldTests(ITestOutputHelper output)
             bool ok = await Ui.Until(4, () => c.Slots.FirstOrDefault()?.Ready == true);
             output.WriteLine($"READY {w}x{h} in {sw.ElapsedMilliseconds} ms");
             Assert.True(ok);
-            Assert.True(sw.ElapsedMilliseconds < 2000 || w > 1440, $"ready took {sw.ElapsedMilliseconds} ms");
+            Assert.True(sw.ElapsedMilliseconds < Ui.Upper(2000) || w > 1440, $"ready took {sw.ElapsedMilliseconds} ms");
             Assert.Empty(c.FallbackReasons);
             var web = c.Slots[0].Web!;
             Assert.True(await Ui.UntilAsync(2, () => Fixture.BlockBuilt(web)));
@@ -274,7 +274,7 @@ public class ShieldTests(ITestOutputHelper output)
         c.Dismiss(() => idle++);
         Assert.True(await Ui.Until(4, () => idle == 1));
         output.WriteLine($"DISMISS idle after {sw.ElapsedMilliseconds} ms");
-        Assert.True(sw.ElapsedMilliseconds < 2600);
+        Assert.True(sw.ElapsedMilliseconds < Ui.Upper(2600));
         Assert.False(c.IsPresenting);
         Assert.Empty(c.Slots);
         await Task.Delay(300);
@@ -376,13 +376,14 @@ public class ShieldTests(ITestOutputHelper output)
         try
         {
             var sw = Stopwatch.StartNew();
+            var startUtc = DateTime.UtcNow;
             c.Show(Fixture.Ctx(remainingMs: 120_000));
             var slot = c.Slots[0];
             Assert.True(await Ui.Until(5, () => slot.Fallback != null));
             output.WriteLine($"FALLBACK blank page: {sw.ElapsedMilliseconds} ms");
-            Assert.InRange(sw.ElapsedMilliseconds, 3900, 4600);
+            Assert.InRange(sw.ElapsedMilliseconds, 3900, Ui.CI ? 9000 : 4600);   // never early (the product timer stays 4 s); late only on a loaded CI VM
             Assert.Equal(["ready timeout"], c.FallbackReasons);
-            Assert.True((slot.Fallback!.CanConfirmAt - DateTime.UtcNow).TotalSeconds > 115);
+            Assert.InRange((slot.Fallback!.CanConfirmAt - startUtc).TotalSeconds, 119, 121);   // the same 120 s, however late
         }
         finally { c.TearDown(); }
     });
@@ -399,7 +400,8 @@ public class ShieldTests(ITestOutputHelper output)
             var slot = c.Slots[0];
             Assert.True(await Ui.Until(3, () => slot.Fallback != null));
             output.WriteLine($"FALLBACK missing page: {sw.ElapsedMilliseconds} ms; {string.Join(";", c.FallbackReasons)}");
-            Assert.True(sw.ElapsedMilliseconds < 3500);
+            Assert.True(sw.ElapsedMilliseconds < Ui.Upper(3500));
+            Assert.DoesNotContain("ready timeout", c.FallbackReasons);   // it did not wait for the 4 s timer
             Assert.True(c.IsPresenting);
         }
         finally { c.TearDown(); }

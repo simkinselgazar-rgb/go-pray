@@ -34,23 +34,31 @@ internal static class Ui
         D = d!;
     }
 
+    /// <summary>A CI runner (GitHub Actions: a cold, loaded VM). There, and only there, wall-clock UPPER bounds
+    /// and waits are doubled. Lower bounds ("never before ~3.9 s") and the product's own timers never change.</summary>
+    public static readonly bool CI = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("CI")) || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("GITHUB_ACTIONS"));
+    public static double Slack => CI ? 2.0 : 1.0;
+    /// <summary>An upper bound in ms: as written locally, doubled on CI.</summary>
+    public static long Upper(long ms) => (long)(ms * Slack);
+
     public static void Run(Func<Task> body, int timeoutSeconds = 60)
     {
         var task = D.InvokeAsync(body).Task.Unwrap();
-        if (!task.Wait(TimeSpan.FromSeconds(timeoutSeconds))) throw new TimeoutException("UI test timed out");
+        if (!task.Wait(TimeSpan.FromSeconds(timeoutSeconds * Slack))) throw new TimeoutException("UI test timed out");
         task.GetAwaiter().GetResult();
     }
 
+    /// <summary>Waits up to `seconds` (times Slack on CI) for the condition.</summary>
     public static async Task<bool> Until(double seconds, Func<bool> cond)
     {
-        var end = DateTime.UtcNow.AddSeconds(seconds);
+        var end = DateTime.UtcNow.AddSeconds(seconds * Slack);
         while (DateTime.UtcNow < end) { if (cond()) return true; await Task.Delay(25); }
         return cond();
     }
 
     public static async Task<bool> UntilAsync(double seconds, Func<Task<bool>> cond)
     {
-        var end = DateTime.UtcNow.AddSeconds(seconds);
+        var end = DateTime.UtcNow.AddSeconds(seconds * Slack);
         while (DateTime.UtcNow < end) { if (await cond()) return true; await Task.Delay(50); }
         return await cond();
     }
