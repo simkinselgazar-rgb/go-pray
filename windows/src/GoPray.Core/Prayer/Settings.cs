@@ -49,6 +49,7 @@ public static class SettingsRules
             AthanVolume = float.IsFinite(s.AthanVolume) ? Math.Min(Math.Max(s.AthanVolume, 0f), 1f) : Defaults.AthanVolume,
             DisabledDefaultApps = disabled,
             CustomApps = custom,
+            Tvs = TvRules.Sanitize(s.Tvs),
         };
     }
 
@@ -98,6 +99,7 @@ public static class SettingsRules
         if (s.PausedUntil is { } p) SwiftJson.WriteDate(w, "pausedUntil", p, fractional: false);
         if (s.ReduceMotion is { } rm) w.WriteBoolean("reduceMotion", rm);
         w.WriteBoolean("setupComplete", s.SetupComplete);
+        TvRules.Write(w, s.Tvs);
         SwiftJson.WriteVoice(w, "voice", s.Voice);
         w.WriteEndObject();
         w.Flush();
@@ -132,6 +134,8 @@ public static class SettingsRules
                 ? SwiftJson.Array(ca, "customApps").Select(ReadCustomApp).ToList() : [],
             EmergencyExitsEnabled = SwiftJson.Optional(o, "emergencyExitsEnabled") is not { } ee || SwiftJson.Bool(ee),
             CheckForUpdates = SwiftJson.Optional(o, "checkForUpdates") is not { } cu || SwiftJson.Bool(cu),
+            // 0.3.0: absent → []; decoded per entry, a bad entry is dropped.
+            Tvs = TvRules.Read(SwiftJson.Optional(o, "tvs")),
         };
     }
 

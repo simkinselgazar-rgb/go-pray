@@ -5,7 +5,7 @@ Signing is OFF until Ahmed's Artifact Signing account exists; pass -Sign -Metada
   scripts\build-installer.ps1 [-Version 0.1.0] [-Dotnet <dotnet.exe>] [-Iscc <ISCC.exe>] [-Sign -Signtool <signtool.exe> -Dlib <Azure.CodeSigning.Dlib.dll> -Metadata <metadata.json>]
 #>
 param(
-    [string]$Version = '0.2.1',
+    [string]$Version = '0.3.0',
     [string]$Dotnet = 'dotnet',
     [string]$Iscc = (Join-Path $env:USERPROFILE 'dev\tools\tools.innosetup.6.7.3\tools\ISCC.exe'),
     [switch]$Sign,

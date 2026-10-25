@@ -21,6 +21,7 @@ using GoPray.App.Launch;
 using GoPray.App.Places;
 using GoPray.App.Shield;
 using GoPray.App.Tray;
+using GoPray.App.Tv;
 using GoPray.App.UI;
 using GoPray.App.Update;
 using GoPray.Core;
@@ -108,6 +109,7 @@ internal sealed class AppHost
     public Scheduler Scheduler { get; }
     public EmergencyLedger Ledger { get; }
     public UpdateChecker Updates { get; }
+    public TvController Tvs { get; } = new();
     DispatcherTimer? _updateTimer;
     TrayIcon? _tray;
     PopoverWindow? _popover;
@@ -127,7 +129,7 @@ internal sealed class AppHost
         Hider = new AppHider(displayName: p => NameOf(store.Settings, p));
         Ledger = new EmergencyLedger(dir);
         Gate = new BlockGate(Clock, new StateStore(dir), Schedule, Shield, Audio, Hider, () => store.Settings,
-                             ledger: Ledger, defaultApps: DefaultApps());
+                             ledger: Ledger, defaultApps: DefaultApps(), tvs: Tvs);
         store.Attach(Gate);                                  // fail closed until this line
         var scheduler = Scheduler = new Scheduler(Clock, Schedule, Gate, () => store.Settings);
         store.OnChange = _ => scheduler.Handle(ReevalReason.SettingsChanged);
@@ -258,7 +260,8 @@ internal sealed class AppHost
         if (!SettingsStore.Settings.SetupComplete) { ShowSetup(); return; }
         if (_settings == null)
         {
-            _settings = new SettingsWindow(new SettingsModel(SettingsStore, Gate, Clock, Audio, Logon, Geocoder, defaultApps: CodingApps.Defaults), ShowCredits);
+            _settings = new SettingsWindow(new SettingsModel(SettingsStore, Gate, Clock, Audio, Logon, Geocoder, defaultApps: CodingApps.Defaults,
+                                                               tvs: Tvs, schedule: Schedule), ShowCredits);
             _settings.Closing += (_, e) => { e.Cancel = true; _settings.Hide(); };    // reused, never destroyed
         }
         Present(_settings);

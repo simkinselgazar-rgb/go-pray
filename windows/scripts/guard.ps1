@@ -31,6 +31,7 @@ $MediaPauser = 'GoPray.App/Audio/MediaPauser.cs'
 $AppHider    = 'GoPray.App/Blocker/AppHider.cs'
 $Updater     = 'GoPray.App/Update/UpdateChecker.cs'
 $Ledger      = 'GoPray.Core/EmergencyLedger.cs'
+$TvCtl       = 'GoPray.App/Tv/TvController.cs'
 
 if (-not $Src) { $Src = Join-Path (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)) 'src' }
 if (-not (Test-Path -LiteralPath $Src -PathType Container)) { Write-Output "guard: no source dir $Src"; exit 2 }
@@ -156,11 +157,25 @@ $manifests = @(Get-ChildItem -LiteralPath $Src -Recurse -File -Include *.manifes
     Where-Object { $_.FullName -notmatch '[\\/](bin|obj)[\\/]' } | Select-String -Pattern 'requireAdministrator|highestAvailable')
 if ($manifests.Count) { Bad "manifest/project asks for elevation: $(($manifests | Select-Object -First 3 | ForEach-Object { $_.Filename + ':' + $_.LineNumber }) -join ' ')" }
 
-# 4. Network: only the geocoder and the update checker (PLAN-v2 §8.3). GitHub, signature checks and running an
+# 4. Network: only the geocoder, the update checker (PLAN-v2 §8.3) and the TV controller (4b). GitHub, signature checks and running an
 #    installer only in the update checker, and the pinned repo appears there exactly once. Process.Start only in
 #    the files that already need it (the logon task's schtasks, Credits' links) and the update checker.
-$net = @(Hits '\bHttpClient\b|\bWebRequest\b|\bWebClient\b|\bSocket\b|\bTcpClient\b|\bUdpClient\b|\bSocketsHttpHandler\b' | Where-Object { $_.File -ne $Geocoder -and $_.File -ne $Updater })
-if ($net.Count) { Bad "network API outside $Geocoder and ${Updater}: $(Show $net)" }
+$net = @(Hits '\bHttpClient\b|\bWebRequest\b|\bWebClient\b|\bSocket\b|\bTcpClient\b|\bUdpClient\b|\bSocketsHttpHandler\b' | Where-Object { @($Geocoder, $Updater, $TvCtl) -notcontains $_.File })
+if ($net.Count) { Bad "network API outside $Geocoder, $Updater and ${TvCtl}: $(Show $net)" }
+# 4b. TVs (0.3.0): only the TV controller opens sockets or talks to LAN hosts. It names no host and no URL: hosts
+#     come from settings (private IPv4 literals, TvRules.IsAllowedHost) and the only literals are the :8060 paths
+#     and the SSDP group. No name lookups, and the test server's loopback never appears in the app's source.
+OnlyIn '\bUdpClient\b|\bTcpClient\b|\bSocket\b|\bNetworkInterface\b|/launch/|/query/' $TvCtl
+Zero '\bDns\.|GetHostEntry|GetHostAddresses|\blocalhost\b|127\.0\.0\.1|IPAddress\.Loopback|IPAddress\.IPv6Loopback'
+foreach ($l in @($lines | Where-Object { $_.File -eq $TvCtl })) {
+    foreach ($m in [regex]::Matches($l.Code, '"(?:[^"\\]|\\.)*"')) {
+        $lit = [regex]::Replace($m.Value, '\{[^}]*\}', '')                       # interpolation holes are code, not text
+        $ips = @([regex]::Matches($lit, '\b\d{1,3}(\.\d{1,3}){3}\b') | Where-Object { $_.Value -ne '239.255.255.250' })
+        if ($lit -match '://|(?i)\bwww\.' -or $lit -match '\b[A-Za-z0-9-]+\.[A-Za-z]{2,}\b' -or $ips.Count) {
+            Bad "hostname or URL literal in ${TvCtl}: $($l.File):$($l.Line) $($m.Value)"
+        }
+    }
+}
 OnlyIn 'WinVerifyTrust|CreateFromSignedFile|api\.github\.com|releases/download|GoPray-Setup|githubusercontent' $Updater
 $repo = Count 'simkinselgazar-rgb/go-pray'
 OnlyIn 'simkinselgazar-rgb/go-pray' $Updater
@@ -236,7 +251,7 @@ if ($Release) {
         $bins = @(Get-ChildItem -LiteralPath $Release -Recurse -File | Where-Object { $_.Name -like 'GoPray*' -and @('.exe', '.dll') -contains $_.Extension.ToLowerInvariant() })
         if (-not $bins.Count) { Bad "-Release: no GoPray*.exe/.dll in $Release" }
         $needles = @('Trigger Athan', 'DebugTriggerAthan', 'DebugWipeState', 'DebugWindowEnd', 'debugWindowEnd', 'GOPRAY_DEBUG_', '--debug-seed', '--debug-shield', 'DebugHarness', 'Page.crash', 'Trigger Athan now',
-                     'DebugSetEmergencyExitsUsed', 'DebugSetUsed', 'Emergency exits (debug)', '--exits-used', '--emergency-at')
+                     'DebugSetEmergencyExitsUsed', 'DebugSetUsed', 'Emergency exits (debug)', '--exits-used', '--emergency-at', '--debug-find-tvs')
         foreach ($b in $bins) {
             $bytes = [IO.File]::ReadAllBytes($b.FullName)
             $ascii = [Text.Encoding]::ASCII.GetString($bytes)

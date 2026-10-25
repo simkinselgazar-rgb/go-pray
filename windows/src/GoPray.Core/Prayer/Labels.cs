@@ -153,6 +153,18 @@ public static class Copy
     public const string BlockedAppsEmpty = "Nothing is on the list, so Coding apps mode rests nothing.";
     public const string CantRestThat = "Go Pray can't rest that one. It's part of Windows.";
     public const string AlreadyListed = "Already on the list.";
+
+    // 0.3.0 TVs (PM brief 2026-10-24)
+    public const string TvHelp = "Your TV needs the Go Pray Roku app.";
+    public const string TvNotInstalled = "Go Pray isn't installed on this TV yet";
+    public const string TvHostRefused = "Use the TV's address on your home Wi-Fi, like 192.168.1.20.";
+    public const string TvAlreadyListed = "That TV is already on the list.";
+    public const string TvUnreachable = "Couldn't reach a TV at that address. Check that it's on and on the same Wi-Fi.";
+    public const string TvTestSent = "Sent. The TV should open Go Pray now.";
+    public const string TvTestFailed = "Couldn't reach the TV. Check that it's on and on the same Wi-Fi.";
+    public const string TvNoneFound = "No TVs found. Check that the TV is on and on the same Wi-Fi, or add it by its address (on the TV: Settings → Network → About).";
+    public const string TvAllListed = "Every TV found is already on the list.";
+    public const string TvFirewall = "Windows Firewall is blocking the replies from TVs. To allow them, an administrator can open Windows Defender Firewall → Advanced settings → Windows Defender Firewall Properties → this network's tab → Settings… and set \"Allow unicast response\" to Yes. Or add the TV by its address (on the TV: Settings → Network → About).";
     public const string AllowExitsHelp = "Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.";
     public const string CheckForUpdatesHelp = "Once a day, from GitHub. Nothing about you is sent.";
 

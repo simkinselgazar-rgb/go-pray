@@ -16,6 +16,10 @@
 // v2 captures (PLAN-v2 §1.1 rule 3, §9.2): the blocked-apps list and "Allow emergency exits" are copied into
 // state.json at block start, like the lock length; the running block reads only those copies.
 //
+// TVs (0.3.0): at block start, right after the Athan starts, the gate hands the enabled TVs to ITvLaunching once
+// (fire and forget). Only a fresh start within 3 min of the prayer's real Athan calls them; a relaunch mid-block,
+// Silence and a late wake never do. Nothing the TVs do can reach the block.
+//
 // Threading: like the Mac's @MainActor, the gate is used from one thread (the app's UI thread).
 // The only async path is the leaving timeout, which posts back to the SynchronizationContext that
 // ended the block.
@@ -72,6 +76,8 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     readonly EmergencyLedger? _ledger;
     /// <summary>The compiled-in default app ids (App: CodingApps.Names.Keys).</summary>
     readonly IReadOnlyList<string> _defaultApps;
+    /// <summary>null = no TV support on this gate (tests that predate 0.3.0).</summary>
+    readonly ITvLaunching? _tvs;
     /// <summary>A dismiss that never calls back is torn down after this (fail open).</summary>
     public TimeSpan LeavingTimeout { get; }
 
@@ -93,8 +99,9 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     public BlockGate(IClock clock, StateStore store, IPrayerScheduleProviding schedule, IShieldPresenting shield,
                      IAthanPlaying audio, IAppHiding hider, Func<Settings> settings,
                      TimeSpan? leavingTimeout = null, Func<bool>? systemReduceMotion = null,
-                     EmergencyLedger? ledger = null, IEnumerable<string>? defaultApps = null)
+                     EmergencyLedger? ledger = null, IEnumerable<string>? defaultApps = null, ITvLaunching? tvs = null)
     {
+        _tvs = tvs;
         _ledger = ledger;
         _defaultApps = (defaultApps ?? []).ToList();
         _clock = clock;
@@ -406,7 +413,17 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
             try { _audio.Play(b.Prayer, s.Voice, s.AthanVolume); }
             catch (Exception e) { CoreLog.Error($"athan play failed: {e.Message}"); }
         }
+        if (freshAthan && State.CurrentBlock is { } started) CallTvs(started, s);    // also when the PC's audio failed
         _shield.Show(ShieldContext()!);
+    }
+
+    /// <summary>Block start only. The TVs are extra: a refusal or a failure is one log line and changes nothing.</summary>
+    void CallTvs(BlockStateFile.Block b, Settings s)
+    {
+        if (_tvs == null || !s.Tvs.Any(t => t.Enabled)) return;
+        if (!TvRules.InLaunchWindow(b.AthanAt, _clock.Now)) { CoreLog.Notice("tv: skipped, late wake"); return; }
+        try { _tvs.AthanStarted(s.Tvs, b.Prayer, s.Voice); }
+        catch (Exception e) { CoreLog.Error($"tv: {e.Message}"); }
     }
 
     private void EndBlock(EndKind kind)

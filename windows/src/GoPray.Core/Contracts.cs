@@ -258,6 +258,8 @@ public sealed record Settings
     public bool EmergencyExitsEnabled { get; init; } = true;
     /// <summary>v2 "Check for updates automatically". Absent in a file → true.</summary>
     public bool CheckForUpdates { get; init; } = true;
+    /// <summary>0.3.0: the Roku TVs called at each Athan. Absent in a file → [].</summary>
+    public IReadOnlyList<TvDevice> Tvs { get; init; } = [];
 
     /// <summary>Value equality for the two lists too (a record would compare the list references), so
     /// SettingsStore.Mutate's "nothing changed" check holds.</summary>
@@ -267,7 +269,8 @@ public sealed record Settings
         && AthanVolume.Equals(o.AthanVolume) && LaunchAtLogin == o.LaunchAtLogin && SetupComplete == o.SetupComplete
         && ReduceMotion == o.ReduceMotion && LockMinutes == o.LockMinutes && PausedUntil == o.PausedUntil
         && DisabledDefaultApps.SequenceEqual(o.DisabledDefaultApps) && CustomApps.SequenceEqual(o.CustomApps)
-        && EmergencyExitsEnabled == o.EmergencyExitsEnabled && CheckForUpdates == o.CheckForUpdates;
+        && EmergencyExitsEnabled == o.EmergencyExitsEnabled && CheckForUpdates == o.CheckForUpdates
+        && Tvs.SequenceEqual(o.Tvs);
 
     public override int GetHashCode() => HashCode.Combine(City, Latitude, Longitude, Method, Mode, LockMinutes, DisabledDefaultApps.Count, CustomApps.Count);
 

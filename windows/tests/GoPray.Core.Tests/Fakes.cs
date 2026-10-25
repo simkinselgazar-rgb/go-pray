@@ -114,6 +114,18 @@ public sealed class FakeHider : IAppHiding
     public void Stop() => StopCount++;
 }
 
+/// <summary>0.3.0: records every block-start TV hand-off. Throw = a controller bug (the block must not care).</summary>
+public sealed class FakeTvs : ITvLaunching
+{
+    public List<(IReadOnlyList<TvDevice> Tvs, Prayer Prayer, Voice Voice)> Calls { get; } = [];
+    public bool Throw { get; set; }
+    public void AthanStarted(IReadOnlyList<TvDevice> tvs, Prayer prayer, Voice voice)
+    {
+        Calls.Add((tvs, prayer, voice));
+        if (Throw) throw new InvalidOperationException("tv controller bug");
+    }
+}
+
 public static class TestSettings
 {
     public static Settings Test(BlockMode mode = BlockMode.WholeScreen, bool setupComplete = true,
@@ -137,6 +149,8 @@ public sealed class Harness : IDisposable
     public FakeShield Shield { get; private set; } = new();
     public FakeAudio Audio { get; private set; } = new();
     public FakeHider Hider { get; private set; } = new();
+    /// <summary>Kept across Relaunch, so a test can count every call a block ever made.</summary>
+    public FakeTvs Tvs { get; } = new();
     public BlockGate Gate { get; private set; } = null!;
     /// <summary>v2: the compiled-in defaults the gate captures from (a small fixed list).</summary>
     public static readonly string[] Defaults = ["Code", "cursor", "chrome", "WindowsTerminal"];
@@ -154,7 +168,7 @@ public sealed class Harness : IDisposable
     public void MakeGate() =>
         Gate = new BlockGate(Clock, new StateStore(Dir), Schedule, Shield, Audio, Hider, () => Settings,
                              leavingTimeout: TimeSpan.FromMilliseconds(200), systemReduceMotion: () => false,
-                             ledger: Ledger, defaultApps: Defaults);
+                             ledger: Ledger, defaultApps: Defaults, tvs: Tvs);
 
     /// <summary>New process: fresh fakes, same file on disk, then the launch re-evaluation.</summary>
     public void Relaunch()

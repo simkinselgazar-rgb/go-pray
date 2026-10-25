@@ -26,7 +26,7 @@ public class MacFixtureTests
             foreach (var (k, d) in keys)
                 if (!m.ContainsKey(k) && o[k] is { } v && v.ToJsonString() == d) o.Remove(k);
         }
-        DropDefaults(macNode, ourNode, ("customApps", "[]"), ("disabledDefaultApps", "[]"), ("emergencyExitsEnabled", "true"), ("checkForUpdates", "true"));
+        DropDefaults(macNode, ourNode, ("customApps", "[]"), ("disabledDefaultApps", "[]"), ("emergencyExitsEnabled", "true"), ("checkForUpdates", "true"), ("tvs", "[]"));
         if (macNode["block"] is System.Text.Json.Nodes.JsonObject mb && ourNode["block"] is System.Text.Json.Nodes.JsonObject ob)
             DropDefaults(mb, ob, ("emergencyExitsEnabled", "true"));
         ours = Encoding.UTF8.GetBytes(ourNode.ToJsonString());
@@ -171,9 +171,7 @@ public class MacFixtureTests
         Assert.False(s.EmergencyExitsEnabled);
         Assert.False(s.CheckForUpdates);
         Assert.Equal(s, s.Sanitized());                                     // nothing to clean in a Mac v2 file
-        using var a = JsonDocument.Parse(mac);
-        using var b = JsonDocument.Parse(s.Encode());
-        Assert.True(JsonElement.DeepEquals(a.RootElement, b.RootElement), Encoding.UTF8.GetString(s.Encode()));
+        AssertSameJson(mac, s.Encode());                                    // 0.3.0 adds only "tvs": []
         Assert.Equal(["figma"], BlockedApps.Effective(s, ["msedge", "Code"]).Where(x => x != "code"));   // msedge off, the Mac app ignored
     }
 

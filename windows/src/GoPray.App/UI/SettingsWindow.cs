@@ -3,6 +3,7 @@
 // by the store through the gate, so a view bug cannot open a hole. No motion.
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
@@ -21,6 +22,8 @@ internal sealed class SettingsWindow : Window
     readonly StackPanel _form = new();
     readonly DispatcherTimer _watch = new() { Interval = TimeSpan.FromSeconds(1) };
     bool _wasBlocked;
+    /// <summary>The last Find TVs result (TVs not on the list yet), shown under the list with Add.</summary>
+    IReadOnlyList<TvFound> _found = [];
 
     public SettingsWindow(SettingsModel model, Action showCredits)
     {
@@ -170,6 +173,9 @@ internal sealed class SettingsWindow : Window
         athan.PreviewMouseUp += commit;
         if (_m.Preview.Failed) athan.Children.Add(Theme.Help("Couldn't play that one. Try another voice."));
 
+        // TVs (0.3.0): each TV with a switch, Test and Remove; then Find TVs and Add by address.
+        if (_m.TvSupported) RenderTvs(Group(groups, "TVs"));
+
         // General
         var general = Group(groups, "General");
         var login = new CheckBox { Content = "Launch at login", IsChecked = s.LaunchAtLogin, FontSize = 13 };
@@ -188,6 +194,97 @@ internal sealed class SettingsWindow : Window
         version.HorizontalAlignment = HorizontalAlignment.Center;
         version.Margin = new Thickness(0, Theme.S16, 0, Theme.S8);
         _form.Children.Add(version);
+    }
+
+    void RenderTvs(StackPanel tvs)
+    {
+        tvs.Children.Add(Theme.Help(Copy.TvHelp));
+        foreach (var row in _m.TvRows)
+        {
+            var line = new DockPanel { Margin = new Thickness(0, Theme.S8, 0, 0) };
+            var controls = new StackPanel { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
+            var id = row.Id;
+            var on = new CheckBox { IsChecked = row.Enabled, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, Theme.S8, 0) };
+            System.Windows.Automation.AutomationProperties.SetName(on, row.Name + " on");
+            on.Click += (_, _) => _m.SetTvEnabled(id, on.IsChecked == true);
+            var test = Theme.Button("Test", () => _ = _m.TestTv(id));
+            test.IsEnabled = !_m.TvBusy;
+            var remove = Theme.Button("Remove", () => _m.RemoveTv(id));
+            remove.Margin = new Thickness(Theme.S8, 0, 0, 0);
+            controls.Children.Add(on); controls.Children.Add(test); controls.Children.Add(remove);
+            DockPanel.SetDock(controls, Dock.Right);
+            line.Children.Add(controls);
+            var text = new StackPanel();
+            text.Children.Add(Theme.Text(row.Name, 13, wrap: false));
+            text.Children.Add(new TextBlock { Text = row.Host, FontFamily = Theme.Mono, FontSize = 11, Foreground = Theme.Secondary });
+            if (!row.Installed) text.Children.Add(Theme.Help(Copy.TvNotInstalled));
+            line.Children.Add(text);
+            tvs.Children.Add(line);
+        }
+        foreach (var f in _found.Where(f => _m.TvRows.All(r => r.Host != f.Host)))
+        {
+            var line = new DockPanel { Margin = new Thickness(0, Theme.S8, 0, 0) };
+            var host = f.Host; var name = f.Name;
+            var add = Theme.Button("Add", () => _ = AddTv(host, name), primary: true);
+            add.IsEnabled = !_m.TvBusy;
+            DockPanel.SetDock(add, Dock.Right);
+            line.Children.Add(add);
+            var text = new StackPanel();
+            text.Children.Add(Theme.Text("Found: " + f.Name, 13, wrap: false));
+            text.Children.Add(new TextBlock { Text = f.Host, FontFamily = Theme.Mono, FontSize = 11, Foreground = Theme.Secondary });
+            line.Children.Add(text);
+            tvs.Children.Add(line);
+        }
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, Theme.S12, 0, 0) };
+        var find = Theme.Button("Find TVs", () => _ = FindTvs());
+        var byIp = Theme.Button("Add by address…", AddTvByAddress);
+        byIp.Margin = new Thickness(Theme.S8, 0, 0, 0);
+        find.IsEnabled = byIp.IsEnabled = !_m.TvBusy;
+        buttons.Children.Add(find); buttons.Children.Add(byIp);
+        tvs.Children.Add(buttons);
+        if (_m.TvBusy) tvs.Children.Add(Theme.Help("Talking to the TV…"));
+        else if (_m.TvNotice != null) tvs.Children.Add(Theme.Help(_m.TvNotice));
+    }
+
+    async System.Threading.Tasks.Task FindTvs()
+    {
+        _found = [];
+        _found = await _m.FindTvs();
+        Render();
+    }
+
+    async System.Threading.Tasks.Task AddTv(string host, string? name)
+    {
+        if (await _m.AddTv(host, name)) _found = _found.Where(f => f.Host != host).ToList();
+        Render();
+    }
+
+    void AddTvByAddress()
+    {
+        var dlg = new Window
+        {
+            Title = "Add a TV", Width = 420, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = this, FontFamily = Theme.Body, Background = Brushes.White,
+        };
+        var p = new StackPanel { Margin = new Thickness(Theme.S24) };
+        var h = Theme.Heading("The TV's address");
+        h.Margin = new Thickness(0, 0, 0, Theme.S8);
+        p.Children.Add(h);
+        p.Children.Add(Theme.Help("On the TV: Settings → Network → About. It looks like 192.168.1.20."));
+        var box = new TextBox { FontFamily = Theme.Mono, FontSize = 13, Margin = new Thickness(0, Theme.S12, 0, 0), MaxLength = 15 };
+        System.Windows.Automation.AutomationProperties.SetName(box, "TV address");
+        p.Children.Add(box);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, HorizontalAlignment = HorizontalAlignment.Right, Margin = new Thickness(0, Theme.S16, 0, 0) };
+        var cancel = Theme.Button("Cancel", dlg.Close);
+        cancel.IsCancel = true;
+        var add = Theme.Button("Add", () => { var host = box.Text; dlg.Close(); _ = AddTv(host, null); }, primary: true);
+        add.IsDefault = true;
+        add.Margin = new Thickness(Theme.S8, 0, 0, 0);
+        buttons.Children.Add(cancel); buttons.Children.Add(add);
+        p.Children.Add(buttons);
+        dlg.Content = p;
+        dlg.Loaded += (_, _) => box.Focus();
+        dlg.ShowDialog();
     }
 
     void ChangeCity()

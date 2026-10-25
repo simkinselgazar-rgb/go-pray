@@ -180,8 +180,8 @@ public class V2AppTests : IDisposable
     {
         Assert.Equal("0.2.0", UI.AppVersion.Clean("0.2.0+6dc13d1d9620cea87f5629cbd5a10014b8aeef25"));
         Assert.Equal("0.0.0", UI.AppVersion.Clean(null));
-        Assert.Equal("Go Pray 0.2.1", UI.AppVersion.Line);                     // <Version> in GoPray.App.csproj
-        Assert.Equal(new Version(0, 2, 1, 0), typeof(UpdateChecker).Assembly.GetName().Version);   // what the checker compares
+        Assert.Equal("Go Pray 0.3.0", UI.AppVersion.Line);                     // <Version> in GoPray.App.csproj
+        Assert.Equal(new Version(0, 3, 0, 0), typeof(UpdateChecker).Assembly.GetName().Version);   // what the checker compares
     }
 
     [Fact]

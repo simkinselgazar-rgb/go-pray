@@ -77,9 +77,9 @@ try {
     # The test installer.
     $appId = '{{' + [guid]::NewGuid().ToString().ToUpperInvariant() + '}'
     & $Iscc /Q "/DTestRun" "/DAppIdValue=$appId" "/DMutexName=$mutex" "/DQuitMessage=$quit" "/DTaskName=$task" `
-        "/DAppVersion=0.2.1" "/DPublishDir=$Publish" "/DOutDir=$tmp" (Join-Path $root 'installer\GoPray.iss')
+        "/DAppVersion=0.3.0" "/DPublishDir=$Publish" "/DOutDir=$tmp" (Join-Path $root 'installer\GoPray.iss')
     if ($LASTEXITCODE -ne 0) { throw 'ISCC failed' }
-    $setup = Join-Path $tmp 'GoPray-Setup-0.2.1.exe'
+    $setup = Join-Path $tmp 'GoPray-Setup-0.3.0.exe'
     schtasks /create /tn $task /tr "cmd /c exit" /sc once /st 23:59 /f | Out-Null
 
     # A. upgrade over a running copy
