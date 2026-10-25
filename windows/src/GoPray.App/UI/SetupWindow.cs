@@ -1,5 +1,6 @@
 // SetupWindow.cs — first-run window, 520 x 600 (spec §7). Port of UI/SetupView.swift.
-// Three steps and a done screen, one question per step, native controls, no motion between steps.
+// Three steps (four with the optional TV step, 0.3.1) and a done screen, one question per step, native controls, no
+// motion between steps.
 
 using System;
 using System.Linq;
@@ -36,6 +37,7 @@ internal sealed class SetupWindow : Window
         dock.Children.Add(_body);
         Content = dock;
         _m.Preview.Changed += () => Dispatcher.BeginInvoke(Render);
+        if (_m.Tvs != null) _m.Tvs.Changed += () => Dispatcher.BeginInvoke(Render);
         Closed += (_, _) => _m.Preview.Stop();
         Loaded += (_, _) => Render();
     }
@@ -46,7 +48,7 @@ internal sealed class SetupWindow : Window
         _body.Children.Clear();
         var top = new StackPanel();
         DockPanel.SetDock(top, Dock.Top);
-        if (_m.Step != SetupStep.Done) top.Children.Add(Theme.Text($"Step {_m.StepNumber} of 3", 11, Theme.Secondary));
+        if (_m.Step != SetupStep.Done) top.Children.Add(Theme.Text($"Step {_m.StepNumber} of {_m.StepCount}", 11, Theme.Secondary));
         var title = Theme.Heading(_m.Title);
         title.Margin = new Thickness(0, Theme.S8, 0, Theme.S16);
         System.Windows.Automation.AutomationProperties.SetHeadingLevel(title, System.Windows.Automation.AutomationHeadingLevel.Level1);
@@ -62,6 +64,7 @@ internal sealed class SetupWindow : Window
             SetupStep.City => _search ??= new CitySearchView(_m.Search, c => { _m.PickedCity = c; RenderFooterOnly(); }),
             SetupStep.Method => MethodStep(),
             SetupStep.Mode => ModeStep(),
+            SetupStep.Tv when _m.Tvs is { } tvm => TvStep(tvm),
             _ => DoneStep(),
         };
         _body.Children.Add(content);
@@ -139,6 +142,54 @@ internal sealed class SetupWindow : Window
         return row;
     }
 
+    /// <summary>0.3.1: "Play the Athan on your TV?" over the shared TvsModel. The scan started as the step appeared;
+    /// while it runs a skeleton row stands where the TVs will be.</summary>
+    UIElement TvStep(TvsModel tvm)
+    {
+        var p = new StackPanel();
+        p.Children.Add(Theme.Text(Copy.SetupTvLine, 13));
+        var list = new StackPanel { Margin = new Thickness(0, Theme.S12, 0, 0) };
+        foreach (var row in tvm.Rows)
+        {
+            var line = new DockPanel { Margin = new Thickness(0, Theme.S8, 0, 0) };
+            var id = row.Id;
+            var test = Theme.Button("Play a test", () => _ = tvm.TestTv(id));
+            test.IsEnabled = !tvm.Busy;
+            DockPanel.SetDock(test, Dock.Right);
+            line.Children.Add(test);
+            line.Children.Add(TvViews.NameAndHost(row.Name, row.Host, tvm.RowLine(id) ?? (row.Installed ? null : Copy.TvNotInstalledHelp)));
+            list.Children.Add(line);
+        }
+        foreach (var f in tvm.Found)
+        {
+            var line = new DockPanel { Margin = new Thickness(0, Theme.S8, 0, 0) };
+            var found = f;
+            var add = Theme.Button("Add", () => _ = tvm.AddFound(found));
+            add.IsEnabled = !tvm.Busy;
+            DockPanel.SetDock(add, Dock.Right);
+            line.Children.Add(add);
+            line.Children.Add(TvViews.NameAndHost(f.Name, f.Host));
+            list.Children.Add(line);
+        }
+        if (tvm.Searching) list.Children.Add(TvViews.SkeletonRow());
+        p.Children.Add(new ScrollViewer { Content = list, MaxHeight = 250, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+        // The scan's and the refusals' lines (a TV's own result is on its row).
+        if (tvm.Notice is { } n && n is Copy.TvFirewall or Copy.TvNoneFound or Copy.TvAllListed or Copy.TvHostRefused or Copy.TvAlreadyListed or Copy.InvalidLine)
+        {
+            var help = Theme.Help(n);
+            help.Margin = new Thickness(0, Theme.S8, 0, 0);
+            p.Children.Add(help);
+        }
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, Theme.S12, 0, 0) };
+        var again = Theme.Button("Find TVs again", () => _ = tvm.FindTvs());
+        var byIp = Theme.Button("Add by address…", () => { if (TvViews.AskAddress(this) is { } host) _ = tvm.AddTv(host); });
+        byIp.Margin = new Thickness(Theme.S8, 0, 0, 0);
+        again.IsEnabled = byIp.IsEnabled = !tvm.Busy;
+        buttons.Children.Add(again); buttons.Children.Add(byIp);
+        p.Children.Add(buttons);
+        return p;
+    }
+
     UIElement DoneStep()
     {
         var p = new StackPanel();
@@ -155,15 +206,32 @@ internal sealed class SetupWindow : Window
         var g = new Grid { Margin = new Thickness(0, Theme.S16, 0, 0) };
         g.ColumnDefinitions.Add(new ColumnDefinition());
         g.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        if (_m.Step is SetupStep.Method or SetupStep.Mode)
+        if (_m.Step is SetupStep.Method or SetupStep.Mode or SetupStep.Tv)
         {
             var back = Theme.Button("Back", () => { _m.Back(); Render(); });
             back.HorizontalAlignment = HorizontalAlignment.Left;
             g.Children.Add(back);
         }
+        if (_m.Step == SetupStep.Tv)
+        {
+            // Skip is the default until a TV is added, then Continue. Skip keeps any TV already added.
+            var right = new StackPanel { Orientation = Orientation.Horizontal };
+            var skip = Theme.Button("Skip", () => { _m.Skip(); Render(); }, primary: !_m.ContinueIsDefault);
+            var go = Theme.Button("Continue", () => { _m.Next(); Render(); }, primary: _m.ContinueIsDefault);
+            go.Margin = new Thickness(Theme.S8, 0, 0, 0);
+            skip.IsDefault = !_m.ContinueIsDefault;
+            go.IsDefault = _m.ContinueIsDefault;
+            right.Children.Add(skip); right.Children.Add(go);
+            Grid.SetColumn(right, 1);
+            g.Children.Add(right);
+            DockPanel.SetDock(g, Dock.Bottom);
+            _footer = g;
+            return g;
+        }
+        bool last = _m.Step == SetupStep.Mode && _m.Tvs == null;
         Button next = _m.Step == SetupStep.Done
             ? Theme.Button("Close", Close, primary: true)
-            : Theme.Button(_m.Step == SetupStep.Mode ? "Finish" : "Next", () => { _m.Next(); Render(); }, primary: true);
+            : Theme.Button(last ? "Finish" : "Next", () => { _m.Next(); Render(); }, primary: true);
         next.IsDefault = true;
         next.IsEnabled = _m.Step == SetupStep.Done || _m.CanGoNext;
         Grid.SetColumn(next, 1);

@@ -164,6 +164,11 @@ public static class Copy
     public const string TvTestFailed = "Couldn't reach the TV. Check that it's on and on the same Wi-Fi.";
     public const string TvNoneFound = "No TVs found. Check that the TV is on and on the same Wi-Fi, or add it by its address (on the TV: Settings → Network → About).";
     public const string TvAllListed = "Every TV found is already on the list.";
+    // 0.3.1 Setup's TV step
+    public const string SetupTvTitle = "Play the Athan on your TV?";
+    public const string SetupTvLine = "If you have a Roku TV, Go Pray can play the Athan on it at each prayer. Your TV needs the free Go Pray Roku app.";
+    public const string TvReady = "Ready";
+    public const string TvNotInstalledHelp = "Go Pray isn't installed on this TV yet. Search 'Go Pray' in the Roku Channel Store.";
     public const string TvFirewall = "Windows Firewall is blocking the replies from TVs. To allow them, an administrator can open Windows Defender Firewall → Advanced settings → Windows Defender Firewall Properties → this network's tab → Settings… and set \"Allow unicast response\" to Yes. Or add the TV by its address (on the TV: Settings → Network → About).";
     public const string AllowExitsHelp = "Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.";
     public const string CheckForUpdatesHelp = "Once a day, from GitHub. Nothing about you is sent.";

@@ -13,7 +13,7 @@
     <RootNamespace>GoPray.App</RootNamespace>
     <StartupObject>GoPray.App.Program</StartupObject>
     <ApplicationIcon>..\..\assets\GoPray.ico</ApplicationIcon>
-    <Version>0.3.0</Version>
+    <Version>0.3.1</Version>
     <!-- Where the scenes come from. Overridable only to prove the manifest check (one changed byte → build fails). -->
     <GoPrayScenesSource Condition="'$(GoPrayScenesSource)' == ''">$(MSBuildThisFileDirectory)..\..\..\GoPray\Resources\scenes</GoPrayScenesSource>
   </PropertyGroup>

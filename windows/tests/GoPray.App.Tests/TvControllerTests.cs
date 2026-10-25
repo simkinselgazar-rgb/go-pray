@@ -484,8 +484,8 @@ public class TvSettingsUiTests
         Assert.Contains("Add by address…", texts);
 
         // Loopback is refused like any non-LAN host; a LAN TV row is put in through the store (nothing is called).
-        Assert.False(await m.AddTv("127.0.0.1"));
-        Assert.Equal(Copy.TvHostRefused, m.TvNotice);
+        Assert.False(await m.Tvs!.AddTv("127.0.0.1"));
+        Assert.Equal(Copy.TvHostRefused, m.Tvs!.Notice);
         store.Mutate(s => s with { Tvs = [new TvDevice("T1", "Den TV", TvKind.Roku, "10.0.0.5", "dev", true, false)] });
         w.Render();
         texts = Texts(w);
@@ -501,6 +501,43 @@ public class TvSettingsUiTests
         Assert.Contains(Copy.BlockedLine, Texts(w));
         var find = Tree(w).OfType<System.Windows.Controls.Button>().First(b => (b.Content as string) == "Find TVs");
         Assert.False(IsEffectivelyEnabled(find));
+        w.Close();
+    });
+
+    [Fact]
+    public void theSetupTvStepDrawsASkeletonWhileScanningThenSkipOrContinue() => Ui.Run(async () =>
+    {
+        using var tv = new FakeTv();
+        using var silent = new UdpClient(new IPEndPoint(IPAddress.Loopback, 0));    // a network with no TV on it
+        var asr = GoPray.Core.Tests.FakeSchedule.At(Prayer.Asr);
+        using var h = new GoPray.Core.Tests.Harness(asr.AddHours(1), SettingsRules.Defaults);
+        var store = new SettingsStore(Path.Combine(Path.GetTempPath(), "gopray-tvsetup-" + Guid.NewGuid().ToString("N")));
+        store.Attach(h.Gate);
+        var c = new TvController(tv.Port, x => x == "127.0.0.1", (IPEndPoint)silent.Client.LocalEndPoint!, () => [IPAddress.Loopback], () => false);
+        var m = new SetupModel(store, h.Schedule, h.Clock, h.Audio, new NoLogon(), new NoGeo(), h.Gate, () => TimeZoneInfo.Utc, tvs: c);
+        var w = new GoPray.App.UI.SetupWindow(m);
+        m.PickedCity = new CityMatch("Cairo", null, "Egypt", "EG", 30.0444, 31.2357);
+        m.Next(); m.Next(); m.Next();
+        Assert.Equal(SetupStep.Tv, m.Step);
+        w.Refresh();
+        var texts = Texts(w);
+        Assert.Contains("Step 4 of 4", texts);
+        Assert.Contains(Copy.SetupTvTitle, texts);
+        Assert.Contains(Copy.SetupTvLine, texts);
+        Assert.Contains(Tree(w).OfType<System.Windows.Controls.StackPanel>(), p => System.Windows.Automation.AutomationProperties.GetName(p) == "Looking for TVs");
+        foreach (var b in new[] { "Back", "Skip", "Continue", "Find TVs again", "Add by address…" }) Assert.Contains(b, texts);
+        var skip = Tree(w).OfType<System.Windows.Controls.Button>().First(b => (b.Content as string) == "Skip");
+        Assert.True(skip.IsDefault);
+        await m.TvScan!;
+        w.Refresh();
+        Assert.DoesNotContain(Tree(w).OfType<System.Windows.Controls.StackPanel>(), p => System.Windows.Automation.AutomationProperties.GetName(p) == "Looking for TVs");
+        Assert.Contains(Copy.TvNoneFound, Texts(w));
+        store.Mutate(s => s with { Tvs = [new TvDevice("T1", "Den TV", TvKind.Roku, "10.0.0.5")] });   // a TV added
+        w.Refresh();
+        Assert.Contains("Play a test", Texts(w));
+        var go = Tree(w).OfType<System.Windows.Controls.Button>().First(b => (b.Content as string) == "Continue");
+        Assert.True(go.IsDefault);
+        Assert.False(Tree(w).OfType<System.Windows.Controls.Button>().First(b => (b.Content as string) == "Skip").IsDefault);
         w.Close();
     });
 

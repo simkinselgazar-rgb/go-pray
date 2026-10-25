@@ -96,3 +96,22 @@ The entry is `{channelId, enabled, host, id, installed, kind:"roku", name}`, key
   - discovery uses the sender, and the firewall case.
 - **`TvSettingsUiTests`** draws the section for real.
 - **`liveRoku`** runs only with `GOPRAY_LIVE_TV=<ip>`.
+
+## 0.3.1: the TV step in first-run setup (PM, 2026-10-24)
+
+- **The shared model.** `GoPray.Core/UI/TvsModel.cs` is the one TV model. It does the scan, add (then check), test, toggle and remove, and keeps the found list and the skeleton flag (`Searching`), the section line and each TV's own line.
+  - Settings → TVs (`SettingsModel.Tvs`) and Setup's TV step (`SetupModel.Tvs`) both use it.
+  - Saves go through the host's normal path: `SettingsModel.Apply` in Settings, `SettingsStore.Mutate` in Setup. Both ask the gate first.
+  - No new network code.
+- **The step.** `SetupStep.Tv` is a new last step, "Step 4 of 4", and appears only when TV support is wired. Existing users (setup done) never see Setup.
+  - Title: "Play the Athan on your TV?" The line under it: "If you have a Roku TV, Go Pray can play the Athan on it at each prayer. Your TV needs the free Go Pray Roku app."
+  - The scan starts as the step appears, and a skeleton row stands in while it runs (no spinner, no blank).
+  - Found TVs are listed with Add. Below them: "Find TVs again" and "Add by address…" (the same dialog and rule as Settings, `TvViews.AskAddress`).
+- **After Add**, the row shows one of:
+  - "Ready";
+  - "Go Pray isn't installed on this TV yet. Search 'Go Pray' in the Roku Channel Store.";
+  - "Couldn't reach a TV at that address…".
+
+  The firewall line belongs to the scan, so it shows under the list after a scan that the firewall really blocked.
+- **"Play a test"** is `TvsModel.TestTv`: the Test path, with `test=1`.
+- **Buttons:** Back, Skip and Continue. Skip is the default until a TV is added, then Continue is. Skip only finishes setup; it saves nothing of its own and keeps any TV already added. A TV added in this step is saved at once, before the rest of setup.

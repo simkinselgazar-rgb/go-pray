@@ -249,7 +249,9 @@ public class TvTests
         public List<(string Host, string Channel, Prayer Prayer, Voice Voice)> Tests { get; } = [];
         public TvDiscovery Found { get; set; } = new([], false);
         public void AthanStarted(IReadOnlyList<TvDevice> tvs, Prayer prayer, Voice voice) { }
-        public Task<TvDiscovery> Discover(CancellationToken cancel) => Task.FromResult(Found);
+        /// <summary>Set: the scan waits for it (to see the skeleton row's flag while it runs).</summary>
+        public TaskCompletionSource? HoldScan { get; set; }
+        public async Task<TvDiscovery> Discover(CancellationToken cancel) { if (HoldScan != null) await HoldScan.Task; return Found; }
         public Task<TvProbe> Probe(string host, CancellationToken cancel) { Probes.Add(host); return Task.FromResult(Answer); }
         public Task<bool> TestLaunch(string host, string channelId, Prayer prayer, Voice voice, CancellationToken cancel)
         {
@@ -277,12 +279,12 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
-        Assert.True(await m.AddTv(" 192.168.1.160 "));
+        Assert.True(await m.Tvs!.AddTv(" 192.168.1.160 "));
         var t = Assert.Single(store.Settings.Tvs);
         Assert.Equal(("192.168.1.160", "58\" Hisense Roku TV", "dev", true, true), (t.Host, t.Name, t.ChannelId, t.Enabled, t.Installed));
-        Assert.Null(m.TvNotice);
-        Assert.False(await m.AddTv("192.168.1.160"));
-        Assert.Equal(Copy.TvAlreadyListed, m.TvNotice);
+        Assert.Null(m.Tvs!.Notice);
+        Assert.False(await m.Tvs!.AddTv("192.168.1.160"));
+        Assert.Equal(Copy.TvAlreadyListed, m.Tvs!.Notice);
         Assert.Single(tv.Probes);
     }
 
@@ -292,8 +294,8 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
-        Assert.False(await m.AddTv(host));
-        Assert.Equal(Copy.TvHostRefused, m.TvNotice);
+        Assert.False(await m.Tvs!.AddTv(host));
+        Assert.Equal(Copy.TvHostRefused, m.Tvs!.Notice);
         Assert.Empty(tv.Probes);
         Assert.Empty(store.Settings.Tvs);
     }
@@ -304,10 +306,10 @@ public class TvTests
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
         tv.Answer = new TvProbe(false, null, null);
-        Assert.True(await m.AddTv("10.0.0.30", "Kitchen"));
+        Assert.True(await m.Tvs!.AddTv("10.0.0.30", "Kitchen"));
         var t = Assert.Single(store.Settings.Tvs);
         Assert.Equal(("Kitchen", "dev", true), (t.Name, t.ChannelId, t.Installed));
-        Assert.Equal(Copy.TvUnreachable, m.TvNotice);
+        Assert.Equal(Copy.TvUnreachable, m.Tvs!.Notice);
     }
 
     [Fact]
@@ -316,10 +318,10 @@ public class TvTests
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
         tv.Answer = new TvProbe(true, "Bedroom", null);
-        Assert.True(await m.AddTv("10.0.0.20"));
+        Assert.True(await m.Tvs!.AddTv("10.0.0.20"));
         Assert.False(store.Settings.Tvs[0].Installed);
-        Assert.Equal(Copy.TvNotInstalled, m.TvNotice);
-        Assert.False(m.TvRows[0].Installed);
+        Assert.Equal(Copy.TvNotInstalled, m.Tvs!.Notice);
+        Assert.False(m.Tvs!.Rows[0].Installed);
     }
 
     [Fact]
@@ -327,20 +329,20 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr.AddHours(1));                     // next: Maghrib
         using var _ = h;
-        await m.AddTv("192.168.1.160");
+        await m.Tvs!.AddTv("192.168.1.160");
         tv.Answer = new TvProbe(true, "x", "12345");                         // the published channel is now installed
-        Assert.True(await m.TestTv(store.Settings.Tvs[0].Id));
+        Assert.True(await m.Tvs!.TestTv(store.Settings.Tvs[0].Id));
         Assert.Equal("12345", store.Settings.Tvs[0].ChannelId);
         Assert.Equal(("192.168.1.160", "12345", Prayer.Maghrib, Voice.Sunni("test-voice")), tv.Tests.Single());
-        Assert.Equal(Copy.TvTestSent, m.TvNotice);
+        Assert.Equal(Copy.TvTestSent, m.Tvs!.Notice);
         Assert.Equal(2, tv.Probes.Count);
 
         tv.Answer = new TvProbe(true, "x", null);                            // removed from the TV
-        Assert.False(await m.TestTv(store.Settings.Tvs[0].Id));
+        Assert.False(await m.Tvs!.TestTv(store.Settings.Tvs[0].Id));
         Assert.False(store.Settings.Tvs[0].Installed);
         Assert.Equal("12345", store.Settings.Tvs[0].ChannelId);              // kept, like the Mac
         Assert.Equal("58\" Hisense Roku TV", store.Settings.Tvs[0].Name);  // a Test never renames
-        Assert.Equal(Copy.TvNotInstalled, m.TvNotice);
+        Assert.Equal(Copy.TvNotInstalled, m.Tvs!.Notice);
         Assert.Single(tv.Tests);
     }
 
@@ -349,16 +351,16 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr);
         using var _ = h;
-        await m.AddTv("192.168.1.160");
+        await m.Tvs!.AddTv("192.168.1.160");
         h.Clock.Now = asr.AddHours(1).AddMinutes(30);                       // Maghrib
         h.Gate.AthanFired(Prayer.Maghrib, FakeSchedule.At(Prayer.Maghrib));
         Assert.True(m.IsBlocked);
         var id = store.Settings.Tvs[0].Id;
-        Assert.False(await m.AddTv("192.168.1.161"));
-        Assert.False(await m.TestTv(id));
-        Assert.Empty(await m.FindTvs());
-        m.SetTvEnabled(id, false);
-        m.RemoveTv(id);
+        Assert.False(await m.Tvs!.AddTv("192.168.1.161"));
+        Assert.False(await m.Tvs!.TestTv(id));
+        Assert.Empty(await m.Tvs!.FindTvs());
+        m.Tvs!.SetEnabled(id, false);
+        m.Tvs!.Remove(id);
         Assert.Equal(Copy.BlockedLine, m.Notice);
         Assert.True(store.Settings.Tvs.Single().Enabled);
         Assert.Single(tv.Probes);                                           // only the add before the block
@@ -370,18 +372,18 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
-        await m.AddTv("192.168.1.160");
+        await m.Tvs!.AddTv("192.168.1.160");
         tv.Found = new([new("192.168.1.160", "Known"), new("192.168.1.161", "New"), new("8.8.8.8", "Public")], false);
-        Assert.Equal(["192.168.1.161"], (await m.FindTvs()).Select(f => f.Host));
+        Assert.Equal(["192.168.1.161"], (await m.Tvs!.FindTvs()).Select(f => f.Host));
         tv.Found = new([new("192.168.1.160", "Known")], false);
-        Assert.Empty(await m.FindTvs());
-        Assert.Equal(Copy.TvAllListed, m.TvNotice);
+        Assert.Empty(await m.Tvs!.FindTvs());
+        Assert.Equal(Copy.TvAllListed, m.Tvs!.Notice);
         tv.Found = new([], false);
-        await m.FindTvs();
-        Assert.Equal(Copy.TvNoneFound, m.TvNotice);
+        await m.Tvs!.FindTvs();
+        Assert.Equal(Copy.TvNoneFound, m.Tvs!.Notice);
         tv.Found = new([], true);
-        await m.FindTvs();
-        Assert.Equal(Copy.TvFirewall, m.TvNotice);
+        await m.Tvs!.FindTvs();
+        Assert.Equal(Copy.TvFirewall, m.Tvs!.Notice);
     }
 
     [Fact]
@@ -389,11 +391,160 @@ public class TvTests
     {
         var (store, h, m, tv) = Model(asr.AddHours(1));
         using var _ = h;
-        await m.AddTv("192.168.1.160");
+        await m.Tvs!.AddTv("192.168.1.160");
         var id = store.Settings.Tvs[0].Id;
-        m.SetTvEnabled(id, false);
+        m.Tvs!.SetEnabled(id, false);
         Assert.False(store.Settings.Tvs[0].Enabled);
-        m.RemoveTv(id);
+        m.Tvs!.Remove(id);
         Assert.Empty(store.Settings.Tvs);
+    }
+
+    // MARK: 0.3.1 — Setup's TV step (the same TvsModel as Settings)
+
+    static readonly CityMatch Cairo = new("Cairo", null, "Egypt", "EG", 30.0444, 31.2357);
+
+    (SettingsStore, Harness, SetupModel, FakeControl) SetupWith(DateTime at, bool tvSupport = true)
+    {
+        var h = new Harness(at, SettingsRules.Defaults);
+        var store = new SettingsStore(TempDir());
+        store.Attach(h.Gate);
+        store.OnChange = s => h.Settings = s;
+        var tv = new FakeControl();
+        var m = new SetupModel(store, h.Schedule, h.Clock, h.Audio, new FakeLogon(), new FakeGeocoder(), h.Gate, () => TimeZoneInfo.Utc,
+                               tvs: tvSupport ? tv : null);
+        return (store, h, m, tv);
+    }
+
+    static void ToTvStep(SetupModel m)
+    {
+        m.PickedCity = Cairo;
+        m.Next(); m.Next(); m.Next();
+    }
+
+    [Fact]
+    public async Task setupStepOrderEndsWithTheTvStepThenDone()
+    {
+        var (store, h, m, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        Assert.Equal(4, m.StepCount);
+        m.PickedCity = Cairo;
+        var seen = new List<SetupStep> { m.Step };
+        for (int i = 0; i < 3; i++) { m.Next(); seen.Add(m.Step); }
+        Assert.Equal([SetupStep.City, SetupStep.Method, SetupStep.Mode, SetupStep.Tv], seen);
+        Assert.Equal(4, m.StepNumber);
+        Assert.Equal("Play the Athan on your TV?", m.Title);
+        Assert.Equal("If you have a Roku TV, Go Pray can play the Athan on it at each prayer. Your TV needs the free Go Pray Roku app.", Copy.SetupTvLine);
+        Assert.NotNull(m.TvScan);                                           // it scans as it appears
+        await m.TvScan!;
+        Assert.False(store.Settings.SetupComplete);                         // not finished yet
+        m.Back();
+        Assert.Equal(SetupStep.Mode, m.Step);
+        m.Next();
+        m.Next();                                                           // Continue
+        Assert.Equal(SetupStep.Done, m.Step);
+        Assert.True(store.Settings.SetupComplete);
+    }
+
+    [Fact]
+    public void withoutTvSupportSetupIsThreeStepsAsBefore()
+    {
+        var (store, h, m, _) = SetupWith(asr.AddHours(1), tvSupport: false);
+        using var __ = h;
+        Assert.Equal(3, m.StepCount);
+        ToTvStep(m);
+        Assert.Equal(SetupStep.Done, m.Step);
+        Assert.Null(m.Tvs);
+    }
+
+    [Fact]
+    public async Task skipSavesNoTvAndFinishesSetup()
+    {
+        var (store, h, m, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        tv.Found = new([new("192.168.1.160", "Living room")], false);
+        ToTvStep(m);
+        await m.TvScan!;
+        Assert.Single(m.Tvs!.Found);
+        Assert.False(m.ContinueIsDefault);                                  // Skip is the default
+        m.Skip();
+        Assert.Equal(SetupStep.Done, m.Step);
+        Assert.True(store.Settings.SetupComplete);
+        Assert.Empty(store.Settings.Tvs);
+        Assert.Empty(new SettingsStore(Path.GetDirectoryName(store.FilePath)!).Settings.Tvs);
+        Assert.Empty(tv.Probes);
+        Assert.Empty(tv.Tests);
+    }
+
+    [Fact]
+    public async Task addInSetupSavesThroughTheNormalPathAndSkipKeepsIt()
+    {
+        var (store, h, m, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        tv.Found = new([new("192.168.1.160", "58\" Hisense Roku TV")], false);
+        ToTvStep(m);
+        await m.TvScan!;
+        Assert.True(await m.Tvs!.AddFound(m.Tvs.Found[0]));
+        var onDisk = new SettingsStore(Path.GetDirectoryName(store.FilePath)!).Settings;   // saved now, through Mutate
+        Assert.Equal("192.168.1.160", onDisk.Tvs.Single().Host);
+        Assert.False(onDisk.SetupComplete);
+        Assert.Empty(m.Tvs.Found);                                          // the added TV leaves the found list
+        Assert.Equal(Copy.TvReady, m.Tvs.RowLine(onDisk.Tvs[0].Id));
+        Assert.True(m.ContinueIsDefault);                                   // now Continue is the default
+        m.Skip();                                                           // Skip keeps it
+        Assert.True(store.Settings.SetupComplete);
+        Assert.Equal("dev", store.Settings.Tvs.Single().ChannelId);
+    }
+
+    [Fact]
+    public async Task setupRowSaysWhenGoPrayIsNotInstalledAndPlayATestUsesTheTestPath()
+    {
+        var (store, h, m, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        ToTvStep(m);
+        await m.TvScan!;
+        tv.Answer = new TvProbe(true, "Bedroom", null);
+        await m.Tvs!.AddTv("10.0.0.20");
+        var id = store.Settings.Tvs[0].Id;
+        Assert.Equal("Go Pray isn't installed on this TV yet. Search 'Go Pray' in the Roku Channel Store.", m.Tvs.RowLine(id));
+        tv.Answer = new TvProbe(true, "Bedroom", "dev");                     // installed it from the store
+        Assert.True(await m.Tvs.TestTv(id));                                // "Play a test"
+        Assert.Single(tv.Tests);                                            // TestLaunch = the test=1 path
+        Assert.Equal(Copy.TvTestSent, m.Tvs.RowLine(id));
+        Assert.True(store.Settings.Tvs[0].Installed);
+    }
+
+    [Fact]
+    public async Task setupScanShowsTheFirewallLineWhenItReallyBlocks()
+    {
+        var (store, h, m, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        tv.Found = new([], true);
+        tv.HoldScan = new TaskCompletionSource();
+        ToTvStep(m);
+        Assert.True(m.Tvs!.Searching);                                      // the skeleton row's flag while it runs
+        Assert.Empty(m.Tvs.Found);
+        tv.HoldScan.SetResult();
+        tv.HoldScan = null;
+        await m.TvScan!;
+        Assert.False(m.Tvs.Searching);
+        Assert.Equal(Copy.TvFirewall, m.Tvs.Notice);
+        await m.Tvs.FindTvs();                                              // "Find TVs again"
+        Assert.Equal(Copy.TvFirewall, m.Tvs.Notice);
+    }
+
+    [Fact]
+    public async Task settingsAndSetupShareOneTvModel()
+    {
+        var (store, h, setup, tv) = SetupWith(asr.AddHours(1));
+        using var _ = h;
+        ToTvStep(setup);
+        await setup.TvScan!;
+        await setup.Tvs!.AddTv("192.168.1.160");
+        var settings = new SettingsModel(store, h.Gate, h.Clock, h.Audio, new FakeLogon(), new FakeGeocoder(), () => TimeZoneInfo.Utc, tvs: tv, schedule: h.Schedule);
+        Assert.IsType<TvsModel>(setup.Tvs);
+        Assert.IsType<TvsModel>(settings.Tvs);
+        Assert.Equal(setup.Tvs.Rows, settings.Tvs!.Rows);                    // the same list, one store
+        Assert.True(await settings.Tvs.TestTv(settings.Tvs.Rows[0].Id));
+        Assert.Single(tv.Tests);                                            // one controller behind both
     }
 }

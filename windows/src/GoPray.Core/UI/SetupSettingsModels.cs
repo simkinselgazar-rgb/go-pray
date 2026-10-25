@@ -61,11 +61,14 @@ public sealed class AthanPreview(IAthanPlaying audio, Func<bool> isBlocked)
     }
 }
 
-public enum SetupStep { City, Method, Mode, Done }
+/// <summary>0.3.1: Tv is the optional last step (only when TV support is wired); existing users never see it.</summary>
+public enum SetupStep { City, Method, Mode, Tv, Done }
 
 /// <summary>Nothing is saved until the last step: one Mutate writes the city, method, madhab, mode, volume and
 /// launch-at-login together with SetupComplete = true. That false→true flip tells the gate not to block the
-/// prayer that is already open (CONTRACT-NOTES #28).</summary>
+/// prayer that is already open (CONTRACT-NOTES #28). The one exception is the optional TV step (0.3.1): a TV that is
+/// added there is saved at once through the normal path (the shared TvsModel → SettingsStore.Mutate), and Skip
+/// keeps it.</summary>
 public sealed class SetupModel
 {
     readonly SettingsStore _store;
@@ -78,13 +81,31 @@ public sealed class SetupModel
     string _method = "muslimWorldLeague";
 
     public SetupModel(SettingsStore store, IPrayerScheduleProviding schedule, IClock clock, IAthanPlaying audio,
-                      ILogonTask logon, ICityGeocoding geocoder, BlockGate gate, Func<TimeZoneInfo>? zone = null)
+                      ILogonTask logon, ICityGeocoding geocoder, BlockGate gate, Func<TimeZoneInfo>? zone = null,
+                      ITvControlling? tvs = null)
     {
         _store = store; _schedule = schedule; _clock = clock; _logon = logon;
         _zone = zone ?? (() => TimeZoneInfo.Local);
         Search = new CitySearchModel(geocoder);
         Preview = new AthanPreview(audio, () => gate.IsBlocked);
+        if (tvs != null) Tvs = new TvsModel(tvs, () => _store.Settings, SaveTvs, () => gate.IsBlocked, () => Notice = Copy.BlockedLine, clock, schedule);
     }
+
+    /// <summary>The TV step's saves: the normal path (Mutate asks the gate first).</summary>
+    bool SaveTvs(Func<Settings, Settings> change)
+    {
+        try { _store.Mutate(change); return true; }
+        catch (SettingsBlockedException) { Notice = Copy.BlockedLine; }
+        catch (Exception) { Notice = Copy.InvalidLine; }
+        return false;
+    }
+
+    /// <summary>The shared TV model (the same class as Settings → TVs); null when TV support is not wired.</summary>
+    public TvsModel? Tvs { get; }
+    /// <summary>The scan the TV step starts when it appears ("Find TVs again" starts another through Tvs).</summary>
+    public Task? TvScan { get; private set; }
+    /// <summary>Skip is the default action until a TV is added, then Continue.</summary>
+    public bool ContinueIsDefault => _store.Settings.Tvs.Count > 0;
 
     public CitySearchModel Search { get; }
     public AthanPreview Preview { get; }
@@ -114,7 +135,8 @@ public sealed class SetupModel
         set { _method = value; _methodTouched = true; }
     }
 
-    public int StepNumber => Math.Min((int)Step + 1, 3);
+    public int StepCount => Tvs != null ? 4 : 3;
+    public int StepNumber => Math.Min((int)Step + 1, StepCount);
     public bool CanGoNext => Step switch { SetupStep.City => PickedCity != null, SetupStep.Done => false, _ => true };
 
     public string Title => Step switch
@@ -122,6 +144,7 @@ public sealed class SetupModel
         SetupStep.City => "Where do you pray?",
         SetupStep.Method => "How are your times worked out?",
         SetupStep.Mode => "How should Go Pray stop you?",
+        SetupStep.Tv => Copy.SetupTvTitle,
         _ => "You're set.",
     };
 
@@ -135,8 +158,22 @@ public sealed class SetupModel
         {
             case SetupStep.City: if (PickedCity != null) Step = SetupStep.Method; break;
             case SetupStep.Method: Step = SetupStep.Mode; break;
-            case SetupStep.Mode: Finish(); break;
+            case SetupStep.Mode:
+                if (Tvs == null) { Finish(); break; }
+                Preview.Stop();
+                Step = SetupStep.Tv;
+                TvScan = Tvs.FindTvs();              // the step scans as it appears
+                break;
+            case SetupStep.Tv: Finish(); break;
         }
+    }
+
+    /// <summary>The TV step's Skip: finish setup. It saves nothing of its own; a TV already added stays.</summary>
+    public void Skip()
+    {
+        if (Step != SetupStep.Tv) return;
+        Notice = null;
+        Finish();
     }
 
     public void Back()
@@ -185,14 +222,14 @@ public sealed class SettingsModel
     readonly ILogonTask _logon;
     readonly Func<TimeZoneInfo> _zone;
     readonly IReadOnlyList<(string Id, string Name)> _defaults;
-    readonly ITvControlling? _tvs;
-    readonly IPrayerScheduleProviding? _schedule;
 
     public SettingsModel(SettingsStore store, BlockGate gate, IClock clock, IAthanPlaying audio, ILogonTask logon,
                          ICityGeocoding geocoder, Func<TimeZoneInfo>? zone = null, IReadOnlyList<(string Id, string Name)>? defaultApps = null,
                          ITvControlling? tvs = null, IPrayerScheduleProviding? schedule = null)
     {
-        _store = store; _gate = gate; _clock = clock; _logon = logon; _tvs = tvs; _schedule = schedule;
+        _store = store; _gate = gate; _clock = clock; _logon = logon;
+        if (tvs != null) Tvs = new TvsModel(tvs, () => _store.Settings, Apply, () => gate.IsBlocked, () => Notice = Copy.BlockedLine, clock, schedule);
+        if (Tvs != null) Tvs.Changed += () => Changed?.Invoke();
         _zone = zone ?? (() => TimeZoneInfo.Local);
         _defaults = defaultApps ?? [];
         Search = new CitySearchModel(geocoder);
@@ -320,126 +357,10 @@ public sealed class SettingsModel
     public string EmergencyLine => Copy.EmergencyLine(Settings.EmergencyExitsEnabled, _gate.EmergencyExitsRemaining);
     public void SetCheckForUpdates(bool on) => Apply(s => s with { CheckForUpdates = on });
 
-    // MARK: 0.3.0 — TVs. Changes go through Apply like the rest (read-only during a block); the network work is the
-    // controller's. A TV's channel id is looked up when it is added and on every Test press, and stored.
+    // MARK: 0.3.0 — TVs: the shared TvsModel (Setup's TV step uses the same one). Saves go through Apply, so a block
+    // refuses them like any other setting.
 
-    public sealed record TvRow(string Id, string Name, string Host, bool Enabled, bool Installed);
-
-    public IReadOnlyList<TvRow> TvRows => Settings.Tvs.Select(t => new TvRow(t.Id, t.Name, t.Host, t.Enabled, t.Installed)).ToList();
-    public bool TvSupported => _tvs != null;
-    /// <summary>The TVs section's own line (a result, not an error at the top of the window).</summary>
-    public string? TvNotice { get; private set; }
-    public bool TvBusy { get; private set; }
-
-    static readonly TimeSpan TvStepTimeout = TimeSpan.FromSeconds(12);
-
-    bool TvRefused()
-    {
-        if (_tvs == null) return true;
-        if (!_gate.IsBlocked && !TvBusy) return false;
-        if (_gate.IsBlocked) { TvNotice = null; Notice = Copy.BlockedLine; }
-        Changed?.Invoke();
-        return true;
-    }
-
-    void TvSay(string? line) { TvNotice = line; Changed?.Invoke(); }
-
-    /// <summary>Find TVs: the ones on the network that are not on the list yet.</summary>
-    public async Task<IReadOnlyList<TvFound>> FindTvs()
-    {
-        if (TvRefused()) return [];
-        TvBusy = true; TvSay(null);
-        try
-        {
-            using var cts = new CancellationTokenSource(TvStepTimeout);
-            var d = await _tvs!.Discover(cts.Token);
-            var listed = Settings.Tvs.Select(t => t.Host).ToHashSet(StringComparer.Ordinal);
-            var fresh = d.Found.Where(f => TvRules.IsAllowedHost(f.Host) && !listed.Contains(f.Host)).ToList();
-            TvNotice = d.FirewallBlocks ? Copy.TvFirewall : fresh.Count > 0 ? null : d.Found.Count > 0 ? Copy.TvAllListed : Copy.TvNoneFound;
-            return fresh;
-        }
-        catch (Exception e) { CoreLog.Notice("tv: find failed: " + e.Message); TvNotice = Copy.TvNoneFound; return []; }
-        finally { TvBusy = false; Changed?.Invoke(); }
-    }
-
-    /// <summary>Add a TV by its address (typed, or picked from Find TVs). Only a private IPv4 literal. Like the Mac it is
-    /// added first, then checked: its name and the Go Pray channel come from the TV; a TV that can't be reached is kept
-    /// with the defaults ("dev", installed) and the line says so.</summary>
-    public async Task<bool> AddTv(string host, string? name = null)
-    {
-        host = (host ?? "").Trim();
-        if (TvRefused()) return false;
-        if (!TvRules.IsAllowedHost(host)) { TvSay(Copy.TvHostRefused); return false; }
-        if (Settings.Tvs.Any(t => t.Host == host)) { TvSay(Copy.TvAlreadyListed); return false; }
-        if (Settings.Tvs.Count >= TvRules.MaxTvs) { TvSay(Copy.InvalidLine); return false; }
-        var id = Guid.NewGuid().ToString("D").ToUpperInvariant();
-        var label = string.IsNullOrWhiteSpace(name) ? TvRules.DefaultName : name!;
-        if (!Apply(s => s with { Tvs = s.Tvs.Append(new TvDevice(id, label, TvKind.Roku, host)).ToList() })) return false;
-        TvBusy = true; TvSay(null);
-        try
-        {
-            var p = await Refresh(id, nameFromTv: string.IsNullOrWhiteSpace(name));
-            TvNotice = p is not { Reachable: true } ? Copy.TvUnreachable : p.ChannelId == null ? Copy.TvNotInstalled : null;
-        }
-        finally { TvBusy = false; Changed?.Invoke(); }
-        return true;
-    }
-
-    /// <summary>Look the Go Pray channel up on one TV and store it (the Mac's refreshTV). Found → its id, installed;
-    /// none → installed false; unreachable → the TV keeps what it had. null when the TV is gone or the look failed.</summary>
-    async Task<TvProbe?> Refresh(string id, bool nameFromTv = false)
-    {
-        if (Settings.Tvs.FirstOrDefault(t => t.Id == id) is not { } tv) return null;
-        TvProbe p;
-        try
-        {
-            using var cts = new CancellationTokenSource(TvStepTimeout);
-            p = await _tvs!.Probe(tv.Host, cts.Token);
-        }
-        catch (Exception e) { CoreLog.Notice("tv: check failed: " + e.Message); return null; }
-        if (!p.Reachable) return p;
-        Apply(s => s with
-        {
-            Tvs = s.Tvs.Select(t => t.Id != id ? t : t with
-            {
-                ChannelId = p.ChannelId ?? t.ChannelId,
-                Installed = p.ChannelId != null,
-                Name = nameFromTv && !string.IsNullOrWhiteSpace(p.Name) ? p.Name! : t.Name,
-            }).ToList(),
-        });
-        return p;
-    }
-
-    public void SetTvEnabled(string id, bool on) =>
-        Apply(s => s with { Tvs = s.Tvs.Select(t => t.Id == id ? t with { Enabled = on } : t).ToList() });
-
-    public void RemoveTv(string id)
-    {
-        if (Apply(s => s with { Tvs = s.Tvs.Where(t => t.Id != id).ToList() })) TvSay(null);
-    }
-
-    /// <summary>Test: look the channel up again (and store it), then launch the next prayer with the current voice,
-    /// marked test=1.</summary>
-    public async Task<bool> TestTv(string id)
-    {
-        if (TvRefused()) return false;
-        if (Settings.Tvs.All(t => t.Id != id)) return false;
-        TvBusy = true; TvSay(null);
-        try
-        {
-            var p = await Refresh(id);
-            if (p is not { Reachable: true }) { TvNotice = Copy.TvTestFailed; return false; }
-            if (p.ChannelId == null) { TvNotice = Copy.TvNotInstalled; return false; }
-            var tv = Settings.Tvs.First(t => t.Id == id);
-            var prayer = _schedule?.NextAthan(_clock.Now)?.Prayer ?? Prayer.Dhuhr;
-            using var cts = new CancellationTokenSource(TvStepTimeout);
-            bool ok = await _tvs!.TestLaunch(tv.Host, tv.ChannelId, prayer, Settings.Voice, cts.Token);
-            TvNotice = ok ? Copy.TvTestSent : Copy.TvTestFailed;
-            return ok;
-        }
-        catch (Exception e) { CoreLog.Notice("tv: test failed: " + e.Message); TvNotice = Copy.TvTestFailed; return false; }
-        finally { TvBusy = false; Changed?.Invoke(); }
-    }
+    public TvsModel? Tvs { get; }
 
     /// <summary>"Automatic (Seventh of the night)" — the high-latitude rule the library would pick here.</summary>
     public string AutomaticRuleLabel

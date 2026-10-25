@@ -248,7 +248,7 @@ internal sealed class AppHost
         if (Gate.IsBlocked) return;
         if (_setup == null || !_setup.IsLoaded)
         {
-            var m = new SetupModel(SettingsStore, Schedule, Clock, Audio, Logon, Geocoder, Gate);
+            var m = new SetupModel(SettingsStore, Schedule, Clock, Audio, Logon, Geocoder, Gate, tvs: Tvs);
             _setup = new SetupWindow(m);
             _setup.Closed += (_, _) => _setup = null;
         }
