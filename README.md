@@ -23,7 +23,7 @@
 
 <p align="center">
   <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.3.0/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.2.1/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.3.0/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
 </p>
 
 <p align="center"><code>brew install simkinselgazar-rgb/tap/go-pray</code></p>
@@ -57,7 +57,7 @@ Free and open source. No account, no tracking.
 
 ## New in 0.3
 
-- **The Athan on your TV.** Go Pray can play the Athan on a Roku TV in your home. At each prayer your Mac opens the Go Pray Roku app, which shows that prayer's painting and plays the Athan through the TV, then goes back to the Roku home screen by itself. Add your TV in Settings → TVs (your Mac asks once to use your local network). The Roku app, "Go Pray: Athan & Adhan", is on its way to the Roku Channel Store. Several computers in one home are fine: the TV plays each prayer once. Windows support is coming next.
+- **The Athan on your TV.** Go Pray can play the Athan on a Roku TV in your home. At each prayer your Mac opens the Go Pray Roku app, which shows that prayer's painting and plays the Athan through the TV, then goes back to the Roku home screen by itself. Add your TV in Settings → TVs (your Mac asks once to use your local network). The Roku app, "Go Pray: Athan & Adhan", is on its way to the Roku Channel Store. Several computers in one home are fine: the TV plays each prayer once. It works on Windows too: add your TV in Go Pray's Settings → TVs on your PC.
 
 ## New in 0.2
 
@@ -115,7 +115,7 @@ brew install simkinselgazar-rgb/tap/go-pray
 
 Needs macOS 14 (Sonoma) or later.
 
-**Windows:** download [GoPray-Setup.exe](https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.2.1/GoPray-Setup.exe) and run it. No admin password needed. It is signed by Ahmed Elgazar; for the first few days Windows SmartScreen may still show a note, so click **More info → Run anyway**. Needs Windows 10 (1809) or later, 64-bit. Source: the [`windows/`](windows/) folder.
+**Windows:** download [GoPray-Setup.exe](https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.3.0/GoPray-Setup.exe) and run it. No admin password needed. It is signed by Ahmed Elgazar; for the first few days Windows SmartScreen may still show a note, so click **More info → Run anyway**. Needs Windows 10 (1809) or later, 64-bit. Source: the [`windows/`](windows/) folder.
 
 On first launch Go Pray asks three things: your city, how your prayer times are worked out (method and Asr), and how it should stop you. macOS then shows a note that Go Pray can run in the background. That is expected: it keeps the Athan on time after a restart.
 
