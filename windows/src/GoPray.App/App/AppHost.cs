@@ -51,12 +51,12 @@ internal sealed class AppHost
             PostMessage(HWND_BROADCAST, QuitMessage, IntPtr.Zero, IntPtr.Zero);
             for (int i = 0; i < 40; i++)
             {
-                using (var probe = new InstanceMutex()) { if (probe.Owned != false) break; }
+                using (var probe = new InstanceMutex(LaunchDecision.MutexNameForThisRun())) { if (probe.Owned != false) break; }
                 System.Threading.Thread.Sleep(250);
             }
             return 0;
         }
-        using var mutex = new InstanceMutex();
+        using var mutex = new InstanceMutex(LaunchDecision.MutexNameForThisRun());
         var launch = new LaunchStateStore(dir);
         var facts = new LaunchFacts(LaunchDecision.KindOf(args), mutex.Owned, new StateStore(dir).PeekHasOpenBlock(),
                                     launch.ReadUserQuitLogonId(), LogonSession.CurrentId());
@@ -207,12 +207,27 @@ internal sealed class AppHost
         if (!SettingsStore.Settings.SetupComplete) ShowSetup();
     }
 
-    /// <summary>After a move or a manual delete the task can be gone; put it back if the person chose it (only after setup).</summary>
+    /// <summary>Every time a copy wires (a hand launch, or a tick that runs): put the task right if the person chose
+    /// launch at login (LogonRepair.Decide, 0.3.2). Gone → register; runs a deleted exe, or a stray one while this is
+    /// the installed copy → register again (pointing here); disabled (an interrupted installer's pause) → enable.
+    /// Ticks that exit at once (another copy runs, or the person quit) do not repair: the copy that runs already did
+    /// at its own start, and a tick only exists while the task is enabled and points at an exe that is there.</summary>
     void RepairLogonTask()
     {
         var s = SettingsStore.Settings;
         if (!s.SetupComplete || !s.LaunchAtLogin) return;
-        try { if (!Logon.IsRegistered) { Logon.Register(); CoreLog.Notice("logon task re-registered at launch"); } }
+        try
+        {
+            var exe = Logon.ExePath;
+            var action = LogonRepair.Decide(s.SetupComplete, s.LaunchAtLogin, Logon.Query(), exe,
+                                            LogonRepair.IsInstalledPath(exe, LogonTask.InstallDirs()), File.Exists);
+            switch (action)
+            {
+                case LogonRepairAction.Register: Logon.Register(); CoreLog.Notice("logon task re-registered at launch"); break;
+                case LogonRepairAction.ReRegister: Logon.Register(); CoreLog.Notice("logon task pointed at this exe again"); break;
+                case LogonRepairAction.Enable: Logon.Enable(); break;
+            }
+        }
         catch (Exception e) { CoreLog.Error("logon task repair failed: " + e.Message); }
     }
 

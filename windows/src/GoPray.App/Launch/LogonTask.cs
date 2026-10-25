@@ -11,6 +11,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Security;
 using System.Security.Principal;
+using System.Xml;
+using System.Xml.Linq;
 using GoPray.Core;
 
 namespace GoPray.App.Launch;
@@ -48,6 +50,51 @@ internal sealed class LogonTask(string? exePath = null, string name = LogonTask.
     }
 
     public bool IsRegistered => Schtasks($"/query /tn \"{name}\"").Code == 0;
+
+    /// <summary>0.3.2: the registered task (enabled? which exe?), or null when there is none or it can't be read.</summary>
+    public LogonTaskInfo? Query()
+    {
+        var r = Schtasks($"/query /tn \"{name}\" /xml");
+        return r.Code == 0 ? ParseQuery(r.Out) : null;
+    }
+
+    /// <summary>`schtasks /query /xml` → the task's Settings/Enabled (absent = enabled) and its Exec/Command. Pure: unit-tested.</summary>
+    public static LogonTaskInfo? ParseQuery(string xml)
+    {
+        int at = (xml ?? "").IndexOf('<');
+        if (at < 0) return null;
+        try
+        {
+            using var reader = XmlReader.Create(new StringReader(xml![at..]), new XmlReaderSettings { DtdProcessing = DtdProcessing.Prohibit, XmlResolver = null });
+            var doc = XDocument.Load(reader);
+            XNamespace ns = "http://schemas.microsoft.com/windows/2004/02/mit/task";
+            var command = doc.Root?.Element(ns + "Actions")?.Element(ns + "Exec")?.Element(ns + "Command")?.Value;
+            if (string.IsNullOrWhiteSpace(command)) return null;
+            var enabled = doc.Root?.Element(ns + "Settings")?.Element(ns + "Enabled")?.Value;
+            return new LogonTaskInfo(!string.Equals(enabled?.Trim(), "false", StringComparison.OrdinalIgnoreCase), command.Trim());
+        }
+        catch (XmlException) { return null; }
+    }
+
+    /// <summary>0.3.2: switch a disabled task back on (an interrupted installer leaves its pause in place).</summary>
+    public void Enable()
+    {
+        var r = Schtasks($"/change /tn \"{name}\" /enable");
+        if (r.Code != 0) throw new InvalidOperationException("schtasks /change /enable failed: " + r.Out.Trim());
+        CoreLog.Notice("logon task re-enabled");
+    }
+
+    /// <summary>Where the installer puts Go Pray: per user ({localappdata}\Programs\Go Pray, GoPray.iss DefaultDirName),
+    /// or a Program Files "Go Pray" folder.</summary>
+    public static string[] InstallDirs() =>
+    [
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Go Pray"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Go Pray"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "Go Pray"),
+    ];
+
+    /// <summary>The exe this task object registers (the running one, unless a test passes another).</summary>
+    public string ExePath => _exe;
 
     public void Register()
     {

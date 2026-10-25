@@ -63,6 +63,35 @@ public static class LaunchDecision
     /// block ends: uninstalling is never a quicker way out than the block itself.</summary>
     public const string QuitMessageName = "GoPray.Quit";
 
+    /// <summary>The mutex this process uses. Release: always MutexName. DEBUG with GOPRAY_DEBUG_STATE_DIR set: a name
+    /// of its own (a stable hash of that folder), so a test or screenshot run never makes the installed copy's ticks
+    /// exit while it blocks with test settings (audit #2, 0.3.2). guard.ps1 -Release proves Release has none of it.</summary>
+    public static string MutexNameForThisRun()
+    {
+#if DEBUG
+        return MutexNameFor(Environment.GetEnvironmentVariable("GOPRAY_DEBUG_STATE_DIR"));
+#else
+        return MutexName;
+#endif
+    }
+
+#if DEBUG
+    public const string DebugMutexSuffix = ".DebugRun.";
+
+    /// <summary>DEBUG: the name for a run whose state folder is <paramref name="debugStateDir"/> (null/empty = the real one).</summary>
+    internal static string MutexNameFor(string? debugStateDir) =>
+        string.IsNullOrEmpty(debugStateDir) ? MutexName
+        : MutexName + DebugMutexSuffix + StableHash(debugStateDir.Trim().TrimEnd('\\', '/').ToUpperInvariant());
+
+    /// <summary>FNV-1a, hex: the same folder gives the same name in every process (string.GetHashCode does not).</summary>
+    static string StableHash(string s)
+    {
+        uint h = 2166136261;
+        foreach (char c in s) { h ^= c; h *= 16777619; }
+        return h.ToString("x8");
+    }
+#endif
+
     public static LaunchKind KindOf(string[] args) =>
         Array.IndexOf(args, TickArgument) >= 0 ? LaunchKind.Tick : LaunchKind.ByHand;
 

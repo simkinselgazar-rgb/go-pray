@@ -109,6 +109,7 @@ $cases = @(
     @{ N = 'rule 10: debug entry inside #if DEBUG passes'; E = 'OK'; M = 'guard: OK'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' "#if DEBUG`nclass T { void M() { gate.DebugTriggerAthan(p, 20); } }`n#endif" } }
     @{ N = 'rule 10: debug state field outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Edit-File $d 'GoPray.Core/BlockState.cs' "#if DEBUG`n            if (b.DebugWindowEnd" "#if RELEASE_PROBE`n#endif`n            if (b.DebugWindowEnd" } }
     @{ N = 'rule 10: debug harness outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Put $d 'GoPray.App/App/Extra.cs' 'class E { void M(string[] a) { Debug.DebugHarness.Run(a); } }' } }
+    @{ N = 'rule 10: the debug mutex suffix outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Put $d 'GoPray.Core/Launch/Extra.cs' 'class E { string n = LaunchDecision.MutexName + LaunchDecision.DebugMutexSuffix; }' } }
     @{ N = 'rule 10: set exits used outside #if DEBUG'; E = 'FAIL'; M = 'debug entry point'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' 'class T { void M() { gate.DebugSetEmergencyExitsUsed(0); } }' } }
     @{ N = 'rule 1: EndBlock called from RequestSilence'; E = 'FAIL'; M = 'EndBlock\( (appears|called from)'; S = { param($d) Edit-File $d 'GoPray.Core/BlockGate.cs' "        _audio.Stop();`n        if (!b.Silenced)" "        _audio.Stop();`n        EndBlock(EndKind.Emergency);`n        if (!b.Silenced)" } }
     @{ N = 'rule 14: RecordUse( in the tray'; E = 'FAIL'; M = 'RecordUse\( outside'; S = { param($d) Put $d 'GoPray.App/Tray/TrayIcon.cs' 'class T { void M() { ledger.RecordUse(u); } }' } }
@@ -147,7 +148,9 @@ try {
             if ($LASTEXITCODE -ne 0) { $failed++; Write-Output "FAIL  build GoPray.Core -c $cfg"; continue }
             $r = Run-Guard $src @('-Release', $out)
             $wantFail = $cfg -eq 'Debug'
-            $ok = (($r.Code -ne 0) -eq $wantFail) -and ($r.Out -match $(if ($wantFail) { "-Release: '.*' found in GoPray.Core.dll" } else { 'guard: OK' }))
+            # The Debug control must also catch the 0.3.2 mutex suffix (LaunchDecision.MutexNameForThisRun), proving Release has none.
+            $ok = (($r.Code -ne 0) -eq $wantFail) -and ($r.Out -match $(if ($wantFail) { "-Release: '.*' found in GoPray.Core.dll" } else { 'guard: OK' })) -and
+                  (-not $wantFail -or $r.Out -match "-Release: '\.DebugRun\.' found in GoPray.Core.dll")
             if ($ok) { $pass++; Write-Output ("PASS  -Release on a {0} build {1}" -f $cfg, $(if ($wantFail) { 'fails (negative control)' } else { 'passes' })) }
             else { $failed++; Write-Output ("FAIL  -Release on {0} build`n{1}" -f $cfg, $r.Out.Trim()) }
         }
