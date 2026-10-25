@@ -1,5 +1,5 @@
 // SetupView.swift — first-run window, 520 × 600 (spec §7). Owner: lane A.
-// Three steps and a done screen, one question per step, native controls.
+// Four steps (the last, a TV, is optional) and a done screen, one question per step, native controls.
 // Motion: none between steps (a one-time screen, and nothing here is worth a delay).
 
 import Adhan
@@ -16,7 +16,7 @@ struct SetupView: View {
             GPSceneBand(prayer: model.headerPrayer, height: 96, still: headerStill)
             VStack(alignment: .leading, spacing: Spacing.s16) {
                 if model.step != .done {
-                    Text("Step \(model.stepNumber) of 3").font(.caption).foregroundStyle(.secondary)
+                    Text("Step \(model.stepNumber) of \(SetupViewModel.stepCount)").font(.caption).foregroundStyle(.secondary)
                 }
                 Text(model.title).font(GPFont.display(26)).accessibilityAddTraits(.isHeader)
                 content.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -34,6 +34,7 @@ struct SetupView: View {
         case .city: CitySearchView(model: model.search, selection: $model.pickedCity)
         case .method: methodStep
         case .mode: modeStep
+        case .tv: SetupTVStep(model: model.tvs)
         case .done: doneStep
         }
     }
@@ -129,14 +130,22 @@ struct SetupView: View {
 
     private var footer: some View {
         HStack {
-            if model.step == .method || model.step == .mode {
+            if model.step == .method || model.step == .mode || model.step == .tv {
                 Button("Back") { model.back() }
             }
             Spacer()
             if model.step == .done {
                 Button("Close") { onFinished() }.keyboardShortcut(.defaultAction)
+            } else if model.step == .tv {
+                // Skip is always there. Continue shows up once a TV is added and then takes over as the main button.
+                if model.hasTV {
+                    Button("Skip") { model.next() }
+                    Button("Continue") { model.next() }.keyboardShortcut(.defaultAction)
+                } else {
+                    Button("Skip") { model.next() }.keyboardShortcut(.defaultAction)
+                }
             } else {
-                Button(model.step == .mode ? "Finish" : "Next") { model.next() }
+                Button("Next") { model.next() }
                     .keyboardShortcut(.defaultAction)
                     .disabled(!model.canGoNext)
             }

@@ -12,8 +12,12 @@
 //   so the waiting copy then wires up and resumes any block from state.json.
 // - A copy opened by hand that finds the lock taken asks the holder to show itself
 //   (a distributed notification) and exits 0.
+// - The launchd copy takes a second lock, `instance.waiter.lock`, BEFORE it waits for
+//   `instance.lock`, and nothing else ever takes it. So "waiter lock held by someone else"
+//   means a launchd copy is alive and waiting. Any other same-bundle-id process (a test
+//   host, a DMG copy, an old build) does not count.
 // - The hand-opened holder hands over (exits 0) once the login agent is registered, the
-//   launchd copy is running, nothing is blocked and none of its windows is open.
+//   waiter lock is held by someone else, nothing is blocked and none of its windows is open.
 //   A block is never handed over half-way.
 // - If the lock file cannot be opened, the copy wires anyway (a broken lock must never
 //   stop the app from working).
@@ -66,18 +70,9 @@ enum SingleInstance {
         setupComplete && launchAtLogin && (status == .notFound || status == .notRegistered)
     }
 
-    static func shouldHandOver(role: InstanceRole, agentRegistered: Bool, otherCopyRunning: Bool,
+    static func shouldHandOver(role: InstanceRole, agentRegistered: Bool, agentCopyWaiting: Bool,
                                isBlocked: Bool, hasOpenWindow: Bool) -> Bool {
-        role == .byHand && agentRegistered && otherCopyRunning && !isBlocked && !hasOpenWindow
-    }
-
-    /// Other running copies of this app (same bundle id, another pid). Used only to know
-    /// that someone is there to take over; who wires is decided by the lock.
-    @MainActor static func otherCopyRunning() -> Bool {
-        guard let id = Bundle.main.bundleIdentifier else { return false }
-        let me = ProcessInfo.processInfo.processIdentifier
-        return NSRunningApplication.runningApplications(withBundleIdentifier: id)
-            .contains { $0.processIdentifier != me && !$0.isTerminated }
+        role == .byHand && agentRegistered && agentCopyWaiting && !isBlocked && !hasOpenWindow
     }
 }
 
@@ -89,6 +84,11 @@ final class InstanceLock: @unchecked Sendable {
 
     static func defaultURL() -> URL {
         StateStore.defaultDirectory().appendingPathComponent("instance.lock")
+    }
+
+    /// The waiter lock: held only by a launchd copy that is waiting for `instance.lock`.
+    static func waiterURL() -> URL {
+        StateStore.defaultDirectory().appendingPathComponent("instance.waiter.lock")
     }
 
     /// nil if the file cannot be created or opened.
@@ -112,5 +112,25 @@ final class InstanceLock: @unchecked Sendable {
             }
             done()
         }
+    }
+
+    /// Blocks the calling (background) thread until the lock is ours. False if it cannot wait.
+    func acquireBlocking() -> Bool {
+        while flock(fd, LOCK_EX) != 0 {
+            if errno != EINTR { return false }
+        }
+        return true
+    }
+
+    func release() { _ = flock(fd, LOCK_UN) }
+
+    /// True only if another process holds the lock. A probe that gets it lets go at once;
+    /// any other error means "not seen" (never hand over on doubt).
+    func isHeldElsewhere() -> Bool {
+        if flock(fd, LOCK_EX | LOCK_NB) == 0 {
+            _ = flock(fd, LOCK_UN)
+            return false
+        }
+        return errno == EWOULDBLOCK
     }
 }

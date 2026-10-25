@@ -9,7 +9,7 @@ import Testing
 
 @MainActor @Suite("Setup flow")
 struct SetupFlowTests {
-    @Test func walksThreeStepsAndSavesOnce() async throws {
+    @Test func walksFourStepsAndSavesOnce() async throws {
         let f = UIFixture(configured: false); defer { f.cleanup() }
         var saves = 0
         f.store.onChange = { _ in saves += 1 }
@@ -27,6 +27,8 @@ struct SetupFlowTests {
         m.volume = 0.5
         #expect(saves == 0, "nothing is saved before the last step")
         #expect(f.store.settings.setupComplete == false)
+        m.next(); #expect(m.step == .tv)
+        #expect(saves == 0, "the TV step is part of setup: still nothing saved")
         m.next()
 
         #expect(m.step == .done)
@@ -70,7 +72,7 @@ struct SetupFlowTests {
         f.login.failure = FakeNetworkError()
         let m = f.setupModel()
         m.pickedCity = .toronto
-        m.next(); m.next(); m.next()
+        m.next(); m.next(); m.next(); m.next()
         #expect(m.step == .done)
         #expect(f.store.settings.setupComplete)
         #expect(f.store.settings.launchAtLogin == false)        // the stored value matches reality
@@ -82,7 +84,7 @@ struct SetupFlowTests {
         let m = f.setupModel()
         m.launchAtLogin = false
         m.pickedCity = .toronto
-        m.next(); m.next(); m.next()
+        m.next(); m.next(); m.next(); m.next()
         #expect(f.login.registerCalls == 0)
         #expect(f.store.settings.launchAtLogin == false)
     }
@@ -92,8 +94,8 @@ struct SetupFlowTests {
         f.startBlock()
         let m = f.setupModel()
         m.pickedCity = .toronto
-        m.next(); m.next(); m.next()
-        #expect(m.step == .mode)
+        m.next(); m.next(); m.next(); m.next()
+        #expect(m.step == .tv)
         #expect(m.notice == GPCopy.blockedLine)
         #expect(f.store.settings.setupComplete == false)
         #expect(f.login.registerCalls == 0, "no side effect before the gate says yes")
@@ -105,7 +107,7 @@ struct SetupFlowTests {
         m.search.coordinateMode = true
         m.search.coordinateText = "43.65, -79.38"
         m.pickedCity = m.search.coordinateMatch
-        m.next(); m.next(); m.next()
+        m.next(); m.next(); m.next(); m.next()
         #expect(m.step == .done)
         #expect(f.store.settings.latitude == 43.65)
         #expect(f.geocoder.calls.isEmpty)

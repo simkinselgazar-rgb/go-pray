@@ -64,8 +64,7 @@ import Observation
 
     @ObservationIgnored private let loginAgent: LoginAgentManaging
     @ObservationIgnored private let schedule: PrayerScheduleProviding?
-    @ObservationIgnored private let tv: TVSending
-    @ObservationIgnored private let discovery: TVDiscovering
+    @ObservationIgnored private var tvModel: TVListModel!
 
     /// One short line about the last thing that did not work. Cleared by the next success.
     private(set) var notice: String?
@@ -74,14 +73,17 @@ import Observation
          loginAgent: LoginAgentManaging, geocoder: CityGeocoding,
          schedule: PrayerScheduleProviding? = nil, tv: TVSending = NoTV(), discovery: TVDiscovering = NoTV()) {
         self.schedule = schedule
-        self.tv = tv
-        self.discovery = discovery
         self.store = store
         self.gate = gate
         self.clock = clock
         self.loginAgent = loginAgent
         self.search = CitySearchModel(geocoder: geocoder)
         self.preview = AthanPreview(audio: audio, isBlocked: { [unowned gate] in gate.isBlocked })
+        self.tvModel = TVListModel(
+            settings: { [store] in store.settings }, apply: { [unowned self] in self.apply($0) },
+            notify: { [unowned self] in self.notice = $0 }, isBlocked: { [unowned gate] in gate.isBlocked },
+            nextPrayer: { [clock, schedule] in schedule?.nextAthan(after: clock.now)?.prayer },
+            tv: tv, discovery: discovery)
     }
 
     var settings: Settings { store.settings }
@@ -193,105 +195,35 @@ import Observation
     var exitsLine: String { EmergencyExitPolicy.line(left: gate.emergencyExitsLeft) }
 
     // MARK: TVs (CONTRACT-NOTES #56)
+    // The logic lives in `TVListModel`, shared with the first-run setup step.
 
-    enum ScanState: Equatable { case idle, scanning, done }
+    typealias ScanState = TVListModel.ScanState
 
-    static let badAddressLine = "Use your TV's address on your home network, like 192.168.1.20."
-    static let duplicateTVLine = "That TV is already on the list."
-    static let testSentLine = "Sent. Your TV should open Go Pray."
-    static let notInstalledLine = "Go Pray isn't installed on this TV yet"
-    static let allowLocalNetworkLine = "Allow Go Pray on your local network: System Settings → Privacy & Security → Local Network"
-    static let testFailedLine = "Couldn't reach that TV. Is it on, and on the same Wi-Fi?"
+    static let badAddressLine = TVListModel.badAddressLine
+    static let duplicateTVLine = TVListModel.duplicateTVLine
+    static let testSentLine = TVListModel.testSentLine
+    static let notInstalledLine = TVListModel.notInstalledLine
+    static let allowLocalNetworkLine = TVListModel.allowLocalNetworkLine
+    static let testFailedLine = TVListModel.testFailedLine
 
-    private(set) var scanState: ScanState = .idle
-    /// Rokus the last scan found that are not on the list yet.
-    private(set) var foundTVs: [FoundTV] = []
-    /// One line per TV after its Test button.
-    private(set) var tvTestLines: [String: String] = [:]
-    private(set) var testingTV: String?
-    /// TVs whose last check was refused by macOS Local Network privacy, and the same for the last scan.
-    private(set) var tvsNeedingNetworkAccess: Set<String> = []
-    private(set) var scanNeedsNetworkAccess = false
-
+    var scanState: ScanState { tvModel.scanState }
+    var foundTVs: [FoundTV] { tvModel.foundTVs }
+    var tvTestLines: [String: String] { tvModel.tvTestLines }
+    var testingTV: String? { tvModel.testingTV }
+    var tvsNeedingNetworkAccess: Set<String> { tvModel.tvsNeedingNetworkAccess }
+    var scanNeedsNetworkAccess: Bool { tvModel.scanNeedsNetworkAccess }
     var tvs: [TVDevice] { settings.tvs }
 
-    func scanForTVs() async {
-        guard !isBlocked, scanState != .scanning else { return }
-        scanState = .scanning
-        let scan = await discovery.scan()
-        scanNeedsNetworkAccess = scan.denied
-        let known = Set(settings.tvs.map(\.host))
-        foundTVs = scan.found.filter { !known.contains($0.host) }
-        scanState = .done
-    }
-
-    /// Adds a TV by address. The address check is `TVHost`; a bad or repeated one is refused with a line.
-    @discardableResult
-    func addTV(host: String, name: String) -> Bool {
-        let host = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard TVHost.isAllowed(host) else { notice = Self.badAddressLine; return false }
-        guard !settings.tvs.contains(where: { $0.host == host }) else { notice = Self.duplicateTVLine; return false }
-        let label = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let added = apply { $0.tvs.append(TVDevice(name: label.isEmpty ? "Roku TV" : label, host: host)) }
-        if added { foundTVs.removeAll { $0.host == host } }
-        return added
-    }
-
-    /// Add, then ask the TV which Go Pray app it has (scan and by-address both go through here).
-    func addTVAndCheck(host: String, name: String) async -> Bool {
-        let h = host.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard addTV(host: h, name: name), let id = settings.tvs.first(where: { $0.host == h })?.id else { return false }
-        await refreshTV(id)
-        return true
-    }
-
-    func addFound(_ found: FoundTV) async { _ = await addTVAndCheck(host: found.host, name: found.name) }
-
-    /// Looks the Go Pray app up on the TV and stores the result. A TV that can't be reached keeps what it had.
-    @discardableResult
-    func refreshTV(_ id: String) async -> TVResolution? {
-        guard !isBlocked, let device = settings.tvs.first(where: { $0.id == id }) else { return nil }
-        let r = await tv.resolve(device)
-        switch r {
-        case .found(let ch): apply { s in if let i = s.tvs.firstIndex(where: { $0.id == id }) { s.tvs[i].channelId = ch; s.tvs[i].installed = true } }
-        case .notInstalled: apply { s in if let i = s.tvs.firstIndex(where: { $0.id == id }) { s.tvs[i].installed = false } }
-        case .unreachable, .localNetworkDenied: break
-        }
-        if r == .localNetworkDenied { tvsNeedingNetworkAccess.insert(id) } else { tvsNeedingNetworkAccess.remove(id) }
-        return r
-    }
-
-    func removeTV(_ id: String) {
-        apply { $0.tvs.removeAll { $0.id == id } }
-        tvTestLines[id] = nil
-        tvsNeedingNetworkAccess.remove(id)
-    }
-
-    func setTV(_ id: String, enabled: Bool) {
-        apply { s in if let i = s.tvs.firstIndex(where: { $0.id == id }) { s.tvs[i].enabled = enabled } }
-    }
-
-    func renameTV(_ id: String, to name: String) {
-        apply { s in if let i = s.tvs.firstIndex(where: { $0.id == id }) { s.tvs[i].name = name } }
-    }
-
-    /// Launches the next prayer, with the current voice, on this one TV. Read-only during a block.
-    func testTV(_ id: String) async {
-        guard !isBlocked, settings.tvs.contains(where: { $0.id == id }), testingTV == nil else { return }
-        testingTV = id
-        defer { testingTV = nil }
-        let checked = await refreshTV(id)
-        if checked == .notInstalled { tvTestLines[id] = Self.notInstalledLine; return }
-        if checked == .localNetworkDenied { tvTestLines[id] = Self.allowLocalNetworkLine; return }
-        guard let device = settings.tvs.first(where: { $0.id == id }) else { return }
-        let prayer = schedule?.nextAthan(after: clock.now)?.prayer ?? .asr
-        do {
-            try await tv.test(device, prayer: prayer, voice: settings.voice)
-            tvTestLines[id] = Self.testSentLine
-        } catch {
-            tvTestLines[id] = (error as? TVError) == .localNetworkDenied ? Self.allowLocalNetworkLine : Self.testFailedLine
-        }
-    }
+    func scanForTVs() async { await tvModel.scanForTVs() }
+    @discardableResult func addTV(host: String, name: String) -> Bool { tvModel.addTV(host: host, name: name) }
+    func addTVAndCheck(host: String, name: String) async -> Bool { await tvModel.addTVAndCheck(host: host, name: name) }
+    func addFound(_ found: FoundTV) async { await tvModel.addFound(found) }
+    func addTyped(_ address: String) async -> Bool { await tvModel.addTyped(address) }
+    @discardableResult func refreshTV(_ id: String) async -> TVResolution? { await tvModel.refreshTV(id) }
+    func removeTV(_ id: String) { tvModel.removeTV(id) }
+    func setTV(_ id: String, enabled: Bool) { tvModel.setTV(id, enabled: enabled) }
+    func renameTV(_ id: String, to name: String) { tvModel.renameTV(id, to: name) }
+    func testTV(_ id: String) async { await tvModel.testTV(id) }
 
     // MARK: Pause
 

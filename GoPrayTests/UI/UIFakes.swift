@@ -81,9 +81,9 @@ extension CityMatch {
         SettingsViewModel(store: store, gate: gate, clock: clock, audio: audio, loginAgent: login, geocoder: geocoder)
     }
 
-    func setupModel() -> SetupViewModel {
+    func setupModel(tv: TVSending = NoTV(), discovery: TVDiscovering = NoTV()) -> SetupViewModel {
         SetupViewModel(store: store, schedule: schedule, clock: clock, audio: audio, loginAgent: login,
-                       geocoder: geocoder, gate: gate)
+                       geocoder: geocoder, gate: gate, tv: tv, discovery: discovery)
     }
 
     func menuModel() -> MenuViewModel {

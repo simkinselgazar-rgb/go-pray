@@ -51,13 +51,13 @@ struct SingleInstanceTests {
     }
 
     @Test func handOverOnlyWhenRegisteredIdleWithNoWindowAndSomeoneToTakeOver() {
-        func h(_ role: InstanceRole = .byHand, reg: Bool = true, other: Bool = true, blocked: Bool = false, window: Bool = false) -> Bool {
-            SingleInstance.shouldHandOver(role: role, agentRegistered: reg, otherCopyRunning: other, isBlocked: blocked, hasOpenWindow: window)
+        func h(_ role: InstanceRole = .byHand, reg: Bool = true, waiting: Bool = true, blocked: Bool = false, window: Bool = false) -> Bool {
+            SingleInstance.shouldHandOver(role: role, agentRegistered: reg, agentCopyWaiting: waiting, isBlocked: blocked, hasOpenWindow: window)
         }
         #expect(h())
         #expect(!h(blocked: true))        // never mid-block
         #expect(!h(window: true))         // not while Setup or Settings is open
-        #expect(!h(other: false))         // nobody to take over
+        #expect(!h(waiting: false))         // nobody to take over
         #expect(!h(reg: false))           // launch at login off: the hand copy is the only one
         #expect(!h(.agent))               // the launchd copy never leaves
     }
@@ -131,6 +131,29 @@ struct InstanceLockProcessTests {
         let (other, _) = try perlLocker(url, nonBlocking: true)
         other.waitUntilExit()
         #expect(other.terminationStatus == 1, "the second process must not get the lock")
+    }
+
+    @Test func aSameBundleCopyThatIsNotWaitingIsNotASuccessor() throws {
+        let url = tempLockURL().deletingLastPathComponent().appendingPathComponent("instance.waiter.lock")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let probe = try #require(InstanceLock(url: url))
+        #expect(!probe.isHeldElsewhere())
+        #expect(!probe.isHeldElsewhere(), "the probe must not keep the lock")
+    }
+
+    @Test func aLiveWaiterIsSeen_andAKilledOneIsNot() async throws {
+        let url = tempLockURL().deletingLastPathComponent().appendingPathComponent("instance.waiter.lock")
+        defer { try? FileManager.default.removeItem(at: url.deletingLastPathComponent()) }
+        let probe = try #require(InstanceLock(url: url))
+        let (holder, out) = try perlLocker(url)
+        defer { if holder.isRunning { kill(holder.processIdentifier, SIGKILL) } }
+        #expect(waitForLine(out)?.contains("held") == true)
+        #expect(probe.isHeldElsewhere())
+
+        let killedAt = Date()
+        kill(holder.processIdentifier, SIGKILL)
+        while probe.isHeldElsewhere(), Date().timeIntervalSince(killedAt) < 2 { try await Task.sleep(for: .milliseconds(20)) }
+        #expect(!probe.isHeldElsewhere(), "a killed waiter must stop counting within 2 s")
     }
 
     @Test func anUnopenableLockFileGivesNil() {

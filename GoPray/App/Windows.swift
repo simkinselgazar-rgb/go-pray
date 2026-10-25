@@ -18,7 +18,7 @@ import SwiftUI
         if setup == nil {
             let model = SetupViewModel(store: env.settingsStore, schedule: env.schedule, clock: env.clock,
                                        audio: env.audio, loginAgent: env.loginAgent, geocoder: env.geocoder,
-                                       gate: env.gate)
+                                       gate: env.gate, tv: env.tv, discovery: env.tvDiscovery)
             let view = SetupView(model: model, headerStill: AnyView(SetupHeaderStill(model: model)),
                                  onFinished: { [weak self] in self?.setup?.close() })
             setup = makeWindow(title: "Set up Go Pray", view: view)

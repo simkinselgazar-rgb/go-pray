@@ -98,6 +98,10 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
     @ObservationIgnored let windows = Windows()
     @ObservationIgnored private var role: InstanceRole = .byHand
     @ObservationIgnored private var lock: InstanceLock?
+    /// Launchd copy only: held while waiting for `lock`, so a hand-opened holder can see us.
+    @ObservationIgnored private var waiterLock: InstanceLock?
+    /// Hand-opened copy: one probe fd for the waiter lock, reused every 5 s.
+    @ObservationIgnored private var waiterProbe: InstanceLock?
     @ObservationIgnored private var showObserver: NSObjectProtocol?
     @ObservationIgnored private var handOverTimer: Timer?
 
@@ -128,11 +132,17 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
                     }
                 }
             }
-            lock?.acquireInBackground { [weak self] in
-                DispatchQueue.main.async {
-                    MainActor.assumeIsolated {
-                        log.notice("lock acquired: wiring up")
-                        self?.wire()
+            if role == .agent { waiterLock = InstanceLock(url: InstanceLock.waiterURL()) }
+            let waiter = waiterLock
+            let instance = lock
+            DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                _ = waiter?.acquireBlocking()      // first: show a hand-opened holder that we wait
+                instance?.acquireInBackground {
+                    DispatchQueue.main.async {
+                        MainActor.assumeIsolated {
+                            log.notice("lock acquired: wiring up")
+                            self?.wire()
+                        }
                     }
                 }
             }
@@ -157,6 +167,7 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
     private func wire() {
         guard env == nil else { return }
         isWaiting = false
+        waiterLock?.release()
         let env = AppEnvironment.live()
         menuModel = MenuViewModel(store: env.settingsStore, gate: env.gate, schedule: env.schedule, clock: env.clock)
         self.env = env
@@ -194,7 +205,8 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
 
     private func considerHandOver() {
         guard let env, role == .byHand, env.loginAgent.isRegistered else { return }
-        if SingleInstance.shouldHandOver(role: role, agentRegistered: true, otherCopyRunning: SingleInstance.otherCopyRunning(),
+        if role == .byHand, waiterProbe == nil { waiterProbe = InstanceLock(url: InstanceLock.waiterURL()) }
+        if SingleInstance.shouldHandOver(role: role, agentRegistered: true, agentCopyWaiting: waiterProbe?.isHeldElsewhere() ?? false,
                                          isBlocked: env.gate.isBlocked, hasOpenWindow: windows.hasOpenWindow) {
             log.notice("handing over to the login agent copy")
             handOverTimer?.invalidate(); handOverTimer = nil

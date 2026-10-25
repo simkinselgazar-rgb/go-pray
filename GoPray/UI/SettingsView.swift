@@ -263,9 +263,7 @@ struct SettingsView: View {
 
     private func addTypedTV() {
         let host = tvAddress
-        guard model.addTV(host: host, name: "") else { return }
-        tvAddress = ""
-        Task { if let id = model.tvs.first(where: { $0.host == host.trimmingCharacters(in: .whitespaces) })?.id { await model.refreshTV(id) } }
+        Task { if await model.addTyped(host) { tvAddress = "" } }
     }
 
     // MARK: General

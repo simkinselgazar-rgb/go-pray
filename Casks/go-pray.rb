@@ -1,7 +1,7 @@
 # Homebrew cask for the tap simkinselgazar-rgb/tap.
 cask "go-pray" do
-  version "0.3.0"
-  sha256 "09c921d3e08b58dcad30814e3b3efde5ab2af71c9c05437cd1a5533fcaa74c44"
+  version "0.3.1"
+  sha256 "442ad4ac26b5075fceba1166a58f184f907da2d86cb4996e7a64e9e216baf585"
 
   url "https://github.com/simkinselgazar-rgb/go-pray/releases/download/v#{version}/GoPray-#{version}.dmg"
   name "Go Pray"

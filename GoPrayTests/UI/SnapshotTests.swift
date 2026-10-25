@@ -14,7 +14,8 @@ struct SnapshotTests {
 
     /// Render `view` in an off-screen window and return the bitmap.
     func render<V: View>(_ view: V, size: CGSize, dark: Bool = false) async -> NSBitmapImageRep? {
-        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height))
+        let host = NSHostingView(rootView: view.frame(width: size.width, height: size.height)
+            .background(Color(nsColor: .windowBackgroundColor)))   // cacheDisplay skips the window's own fill
         host.frame = CGRect(origin: .zero, size: size)
         let window = NSWindow(contentRect: host.frame, styleMask: [.borderless], backing: .buffered, defer: false)
         window.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
@@ -65,8 +66,40 @@ struct SnapshotTests {
         m.next()
         await shot("setup-3-mode", view, size: size)
         m.next()
-        await shot("setup-4-done", view, size: size)
-        await shot("setup-4-done-dark", view, size: size, dark: true)
+        await shot("setup-4-tv-scanning", view, size: size)
+        m.next()
+        await shot("setup-5-done", view, size: size)
+        await shot("setup-5-done-dark", view, size: size, dark: true)
+    }
+
+    @Test func setupTVStepSkeleton() async throws {
+        let f = UIFixture(configured: false); defer { f.cleanup() }
+        let d = CountingDiscovery(); d.hang = true               // the scan never answers: skeleton row stays
+        let m = f.setupModel(discovery: d)
+        m.pickedCity = .toronto
+        m.next(); m.next(); m.next()
+        let size = CGSize(width: 520, height: 600)
+        let view = SetupView(model: m, onFinished: {})
+        await shot("setup-tv-1-scanning", view, size: size)
+        await shot("setup-tv-1-scanning-dark", view, size: size, dark: true)
+    }
+
+    @Test func setupTVStep() async throws {
+        let f = UIFixture(configured: false); defer { f.cleanup() }
+        let s = RecordingSender(); s.resolution = .found("dev")
+        let d = CountingDiscovery()
+        d.result = TVScan(found: [FoundTV(host: "192.168.1.20", name: "Living room"), FoundTV(host: "192.168.1.31", name: "Bedroom TV")])
+        let m = f.setupModel(tv: s, discovery: d)
+        m.pickedCity = .toronto
+        m.next(); m.next(); m.next()
+        let size = CGSize(width: 520, height: 600)
+        let view = SetupView(model: m, onFinished: {})
+        await m.tvs.scanForTVs()
+        await shot("setup-tv-2-found", view, size: size)
+        await shot("setup-tv-2-found-dark", view, size: size, dark: true)
+        await m.tvs.addFound(m.tvs.foundTVs[0])
+        await shot("setup-tv-3-added-ready", view, size: size)
+        await shot("setup-tv-3-added-ready-dark", view, size: size, dark: true)
     }
 
     // MARK: Settings
