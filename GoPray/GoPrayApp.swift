@@ -20,6 +20,9 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
     let loginAgent: LoginAgentManaging
     let geocoder: CityGeocoding
     let ledger: EmergencyLedger
+    /// TV control (CONTRACT-NOTES #56). Tests default to `NoTV`; only `live()` talks to a network.
+    let tv: TVSending
+    let tvDiscovery: TVDiscovering
     let gate: BlockGate
     let scheduler: Scheduler
     /// The update check (v2 §8). Created by `start()`, so only the live app has one.
@@ -28,7 +31,8 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
     init(clock: Clock, store: StateStore, settingsStore: SettingsStore, schedule: PrayerScheduleProviding,
          shield: ShieldPresenting, audio: AthanPlaying, hider: AppHiding, loginAgent: LoginAgentManaging,
          geocoder: CityGeocoding, ledger: EmergencyLedger = EmergencyLedger(),
-         defaultApps: Set<String> = CodingApps.bundleIDs) {
+         defaultApps: Set<String> = CodingApps.bundleIDs,
+         tv: TVSending = NoTV(), tvDiscovery: TVDiscovering = NoTV()) {
         self.clock = clock
         self.store = store
         self.settingsStore = settingsStore
@@ -39,8 +43,10 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
         self.loginAgent = loginAgent
         self.geocoder = geocoder
         self.ledger = ledger
+        self.tv = tv
+        self.tvDiscovery = tvDiscovery
         let gate = BlockGate(clock: clock, store: store, schedule: schedule, shield: shield,
-                             audio: audio, hider: hider, ledger: ledger, defaultApps: defaultApps,
+                             audio: audio, hider: hider, ledger: ledger, defaultApps: defaultApps, tv: tv,
                              settings: { settingsStore.settings })
         self.gate = gate
         settingsStore.attach(gate)                 // fail closed until this line: the store refuses everything
@@ -69,7 +75,8 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
                               loginAgent: LoginAgent(),
                               geocoder: Geocoder(),
                               ledger: EmergencyLedger(),
-                              defaultApps: hidden)
+                              defaultApps: hidden,
+                              tv: TVController(), tvDiscovery: RokuDiscovery())
     }
 
     func start() {

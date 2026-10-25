@@ -40,6 +40,8 @@ import os
     @ObservationIgnored private let audio: AthanPlaying
     @ObservationIgnored private let hider: AppHiding
     @ObservationIgnored private let ledger: EmergencyLedger
+    /// TV control (CONTRACT-NOTES #56). Fire and forget; the gate never waits on it.
+    @ObservationIgnored private let tv: TVSending
     /// The compiled-in defaults (Mac wiring passes `CodingApps.bundleIDs`). The effective list is
     /// computed from them and the settings ONCE, at block start.
     @ObservationIgnored private let defaultApps: Set<String>
@@ -50,6 +52,8 @@ import os
     let leavingTimeout: Duration
 
     static let crashLoopLaunches = 3
+    /// The TV is called only within this long after the prayer's real Athan time (CONTRACT-NOTES #66).
+    static let tvLateWakeLimit: TimeInterval = 180
     static let crashLoopWindow: TimeInterval = 120
 
     // MARK: State
@@ -65,7 +69,7 @@ import os
     @ObservationIgnored private var lastSeen: (setupComplete: Bool, paused: Bool)
 
     init(clock: Clock, store: StateStore, schedule: PrayerScheduleProviding, shield: ShieldPresenting,
-         audio: AthanPlaying, hider: AppHiding, ledger: EmergencyLedger, defaultApps: Set<String>,
+         audio: AthanPlaying, hider: AppHiding, ledger: EmergencyLedger, defaultApps: Set<String>, tv: TVSending = NoTV(),
          settings: @escaping @MainActor () -> Settings,
          leavingTimeout: Duration = .seconds(4),
          systemReduceMotion: @escaping @MainActor () -> Bool = { NSWorkspace.shared.accessibilityDisplayShouldReduceMotion }) {
@@ -76,6 +80,7 @@ import os
         self.audio = audio
         self.hider = hider
         self.ledger = ledger
+        self.tv = tv
         self.defaultApps = defaultApps
         self.settings = settings
         self.leavingTimeout = leavingTimeout
@@ -340,6 +345,15 @@ import os
         if freshAthan, let b = state.block, !b.silenced {
             do { try audio.play(prayer: b.prayer, voice: s.voice, volume: s.athanVolume) }
             catch { log.error("athan play failed: \(error.localizedDescription, privacy: .public)") }
+            // The household's Athan too: only here, so only when the Mac's Athan fires (live, or wake into an
+            // open window). Not on a relaunch (freshAthan false), not silenced, not paused (no block starts).
+            // Several computers can share one Wi-Fi: only the Athan itself starts the TV. Waking into an open window
+            // more than 3 min after the real prayer time still blocks the Mac, but leaves the TV alone.
+            if clock.now.timeIntervalSince(b.athanAt) <= Self.tvLateWakeLimit {
+                tv.athanStarted(prayer: b.prayer, voice: s.voice, tvs: s.tvs)
+            } else {
+                log.notice("tv: skipped, late wake")
+            }
         }
         shield.show(shieldContext()!)
     }

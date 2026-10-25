@@ -125,6 +125,7 @@ extension Settings {
     /// The compiled-in defaults the gate computes the effective list from.
     var defaultApps: Set<String> = ["app.one", "app.two"]
     var mirror = FakeLedgerMirror()
+    var tv = FakeTV()
     var gate: BlockGate!
 
     init(at start: Date, settings: Settings = .test(), dir: URL? = nil) {
@@ -139,14 +140,14 @@ extension Settings {
         gate = BlockGate(clock: clock, store: StateStore(directory: dir), schedule: schedule, shield: shield,
                          audio: audio, hider: hider,
                          ledger: EmergencyLedger(directory: dir, mirror: mirror, calendar: Self.calendar),
-                         defaultApps: defaultApps, settings: { [unowned self] in self.settings },
+                         defaultApps: defaultApps, tv: tv, settings: { [unowned self] in self.settings },
                          leavingTimeout: .milliseconds(200),
                          systemReduceMotion: { false })
     }
 
     /// New process: fresh fakes, same file on disk, then the launch re-evaluation.
     func relaunch() {
-        shield = FakeShield(); audio = FakeAudio(); hider = FakeHider()
+        shield = FakeShield(); audio = FakeAudio(); hider = FakeHider(); tv = FakeTV()
         makeGate()
         gate.reevaluate(.launch)
     }
@@ -173,4 +174,15 @@ extension Settings {
 /// The prefs mirror, in memory; survives `relaunch()` like the real prefs plist does.
 final class FakeLedgerMirror: EmergencyMirror {
     var usedJSON: String?
+}
+
+/// Records what the gate asked the TVs to do. No network.
+final class FakeTV: TVSending, @unchecked Sendable {
+    struct Call: Equatable { var prayer: Prayer; var voice: Voice; var tvs: [TVDevice] }
+    private let lock = NSLock()
+    private var _calls: [Call] = []
+    var calls: [Call] { lock.withLock { _calls } }
+    func athanStarted(prayer: Prayer, voice: Voice, tvs: [TVDevice]) { lock.withLock { _calls.append(.init(prayer: prayer, voice: voice, tvs: tvs)) } }
+    func resolve(_ tv: TVDevice) async -> TVResolution { .unreachable }
+    func test(_ tv: TVDevice, prayer: Prayer, voice: Voice) async throws {}
 }

@@ -1,0 +1,12 @@
+title=Go Pray: Athan & Adhan
+major_version=1
+minor_version=0
+build_version=0
+supports_input_launch=1
+ui_resolutions=fhd
+mm_icon_focus_hd=pkg:/images/icon-focus-hd.png
+mm_icon_focus_fhd=pkg:/images/icon-focus-fhd.png
+splash_screen_hd=pkg:/images/splash.jpg
+splash_screen_fhd=pkg:/images/splash.jpg
+splash_color=#0e0705
+splash_min_time=0

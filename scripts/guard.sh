@@ -70,10 +70,23 @@ for p in 'forceTerminate' '\.terminate\(\)' '(^|[^A-Za-z0-9_])kill\(' 'SIGKILL';
   n=$(count "$p"); [ "$n" -eq 0 ] || bad "'$p' must not appear ($n hits): $(hits "$p" | head -3 | tr '\n' ' ')"
 done
 
-# 4. Network: the geocoder file, and (v2) the one update-check file. Nothing else.
+# 4. Network: the geocoder file, the one update-check file (v2) and the one TV file (TV Plan §3). Nothing else.
 for f in $(files 'URLSession'); do
-  [ "$f" = "Prayer/Geocoder.swift" ] || [ "$f" = "Update/UpdateChecker.swift" ] || bad "'URLSession' outside the geocoder and the update checker: $f"
+  [ "$f" = "Prayer/Geocoder.swift" ] || [ "$f" = "Update/UpdateChecker.swift" ] || [ "$f" = "TV/TVController.swift" ] \
+    || bad "'URLSession' outside the geocoder, the update checker and the TV controller: $f"
 done
+# 4c. TV control (CONTRACT-NOTES #56): raw sockets (SSDP) and Network.framework only in the TV file, and that file holds
+#     no hostname, URL or IP literal inside a string (hosts come from Settings only). The one allowed IP literal is
+#     the SSDP multicast group. ":8060" and "/launch" path pieces are fine: they are not hosts.
+TVF='TV/TVController.swift'
+only_in '(^|[^A-Za-z0-9_.])(socket|sendto|recvfrom|bind|connect)\(' "$TVF"
+only_in 'NWConnection|NWBrowser|NWListener|CFSocket|CFStream' "$TVF"
+# (comments, and so anything after "//", are stripped before matching: an "http:" inside a string is enough)
+tvbad=$(hits '"[^"]*https?:|"([^"]*[^A-Za-z0-9])?(www\.|localhost)|"([^"]*[^A-Za-z0-9.-])?[A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*\.(com|net|org|io|tv|app|dev|local|lan|home|arpa|co|ca|me|us|uk)([^A-Za-z0-9][^"]*)?"' | grep "^$TVF:" || true)
+[ -z "$tvbad" ] || bad "a hostname or URL literal in $TVF (hosts come from Settings only): $(echo "$tvbad" | head -3 | tr '\n' ' ')"
+tvip=$(hits '"([^"]*[^0-9.])?[0-9]{1,3}(\.[0-9]{1,3}){3}([^0-9.][^"]*)?"' | grep "^$TVF:" | grep -v '239\.255\.255\.250' || true)
+[ -z "$tvip" ] || bad "an IP literal in $TVF (only the SSDP group 239.255.255.250 is allowed): $(echo "$tvip" | head -3 | tr '\n' ' ')"
+
 only_in 'CLGeocoder' 'Prayer/Geocoder.swift'
 # 4b. The update checker (v2 §8.3): the GitHub hosts, the pinned repo (exactly once), the signature check with
 #     our team id, the downloads folder and opening a file all live in Update/UpdateChecker.swift only.

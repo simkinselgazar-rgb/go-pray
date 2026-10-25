@@ -28,6 +28,8 @@
 	<true/>
 	<key>ATSApplicationFontsPath</key>
 	<string>fonts</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Go Pray starts the Athan on the TVs you add in Settings. It only talks to your own network.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>MIT (code). Audio carries its own licences, see Credits.</string>
 </dict>

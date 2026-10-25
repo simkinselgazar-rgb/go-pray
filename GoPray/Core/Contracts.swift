@@ -144,6 +144,8 @@ struct Settings: Codable, Equatable, Sendable {
     var emergencyExitsEnabled: Bool = true
     /// v2 (§8). "Check for updates automatically". Absent → true.
     var checkForUpdates: Bool = true
+    /// TV control (CONTRACT-NOTES #56). Roku TVs the Athan also starts on. Absent → []. One bad entry is dropped, not fatal.
+    var tvs: [TVDevice] = []
 }
 
 extension Settings {
@@ -168,7 +170,14 @@ extension Settings {
         customApps = try c.decodeIfPresent([CustomApp].self, forKey: .customApps) ?? []
         emergencyExitsEnabled = try c.decodeIfPresent(Bool.self, forKey: .emergencyExitsEnabled) ?? true
         checkForUpdates = try c.decodeIfPresent(Bool.self, forKey: .checkForUpdates) ?? true
+        tvs = (try? c.decodeIfPresent([Lossy<TVDevice>].self, forKey: .tvs))?.compactMap(\.value) ?? []
     }
+}
+
+/// Decodes one element or nil, so a bad entry never makes the whole settings file unreadable.
+private struct Lossy<T: Decodable>: Decodable {
+    let value: T?
+    init(from decoder: Decoder) throws { value = try? T(from: decoder) }
 }
 
 // MARK: - Blocked apps (v2, CONTRACT-NOTES #49)

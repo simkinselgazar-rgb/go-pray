@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<component name="AthanScene" extends="Scene">
+  <interface>
+    <field id="params" type="assocarray" onChange="onParams" />
+    <field id="done" type="boolean" />
+    <field id="phase" type="string" />
+  </interface>
+  <script type="text/brightscript" uri="pkg:/components/AthanScene.brs" />
+  <children>
+    <Poster id="bg" width="1920" height="1080" loadDisplayMode="scaleToFill" />
+    <Label id="voice" translation="[18,640]" width="770" horizAlign="center" font="font:MediumSystemFont" />
+    <Group id="welcome" visible="false">
+      <Rectangle width="1920" height="1080" color="0x000000B0" />
+      <Poster id="wIcon" uri="pkg:/images/welcome-icon.png" translation="[160,190]" width="180" height="180" />
+      <Label id="wName" translation="[160,400]" width="1000" font="font:LargeBoldSystemFont" color="0xF2E4CCFF" />
+      <Label id="wText" translation="[160,490]" width="1000" wrap="true" numLines="6" lineSpacing="10" font="font:MediumSystemFont" color="0xE6DCCBFF" />
+      <Poster id="wQr" uri="pkg:/images/qr.png" translation="[1270,260]" width="400" height="400" />
+      <Label id="wUrl" translation="[1120,690]" width="700" horizAlign="center" font="font:SmallSystemFont" color="0xE6DCCBFF" />
+    </Group>
+    <Audio id="aud" />
+    <Timer id="exitTimer" repeat="false" />
+    <Timer id="startTimer" repeat="false" duration="8" />
+  </children>
+</component>

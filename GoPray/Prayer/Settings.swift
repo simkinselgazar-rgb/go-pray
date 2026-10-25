@@ -32,6 +32,7 @@ extension Settings {
         s.athanVolume = athanVolume.isFinite ? min(max(athanVolume, 0), 1) : Settings.defaults.athanVolume
         s.disabledDefaultApps = Self.cleanDisabled(disabledDefaultApps)
         s.customApps = Self.cleanCustom(customApps)
+        s.tvs = Self.cleanTVs(tvs)
         return s
     }
 
@@ -40,6 +41,23 @@ extension Settings {
         let out = ids.map { String(BlockedApps.normalize($0).prefix(BlockedApps.maxIDLength)) }
             .filter { BlockedApps.isBlockable($0) && seen.insert($0).inserted }
         return Array(out.prefix(BlockedApps.maxDisabled))
+    }
+
+    /// TVs: trim, default the channel, drop any whose address is not a private IPv4 literal (so a bad
+    /// address is refused at save and a hand-edited file cannot make us talk to the internet), dedupe by id and address.
+    static let maxTVs = 8
+    private static func cleanTVs(_ tvs: [TVDevice]) -> [TVDevice] {
+        var ids = Set<String>(), hosts = Set<String>()
+        var out: [TVDevice] = []
+        for var tv in tvs {
+            tv.host = tv.host.trimmingCharacters(in: .whitespacesAndNewlines)
+            tv.name = String(tv.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(TVDevice.maxNameLength))
+            if tv.name.isEmpty { tv.name = "Roku TV" }
+            if !TVDevice.isValidChannelId(tv.channelId) { tv.channelId = TVDevice.defaultChannelId }
+            guard TVHost.isAllowed(tv.host), !tv.id.isEmpty, ids.insert(tv.id).inserted, hosts.insert(tv.host).inserted else { continue }
+            out.append(tv)
+        }
+        return Array(out.prefix(maxTVs))
     }
 
     /// One entry per (platform, id). The never-block list is applied to this platform's entries.

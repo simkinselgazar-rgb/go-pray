@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.2.1/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
+  <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/v0.3.0/GoPray.dmg"><img src="https://img.shields.io/badge/Download-for%20macOS-3E6B3A?style=for-the-badge&logo=apple&logoColor=white" alt="Download for macOS" height="36"></a>
   <a href="https://github.com/simkinselgazar-rgb/go-pray/releases/download/win-v0.2.1/GoPray-Setup.exe"><img src="https://img.shields.io/badge/Download-for%20Windows-3E6B3A?style=for-the-badge&logo=windows&logoColor=white" alt="Download for Windows" height="36"></a>
 </p>
 
@@ -53,7 +53,11 @@
 
 When the Athan comes in, Go Pray plays it and covers the screen with a painting of that prayer's sky. A ring counts down your break. When the ring is full, you press **I prayed**, you see "May Allah accept it.", and your work is right where you left it.
 
-Free and open source. No account, no tracking, no network after setup.
+Free and open source. No account, no tracking.
+
+## New in 0.3
+
+- **The Athan on your TV.** Go Pray can play the Athan on a Roku TV in your home. At each prayer your Mac opens the Go Pray Roku app, which shows that prayer's painting and plays the Athan through the TV, then goes back to the Roku home screen by itself. Add your TV in Settings → TVs (your Mac asks once to use your local network). The Roku app, "Go Pray: Athan & Adhan", is on its way to the Roku Channel Store. Several computers in one home are fine: the TV plays each prayer once. Windows support is coming next.
 
 ## New in 0.2
 

@@ -29,7 +29,8 @@ import SwiftUI
     func showSettings(_ env: AppEnvironment) {
         if settings == nil {
             let model = SettingsViewModel(store: env.settingsStore, gate: env.gate, clock: env.clock,
-                                          audio: env.audio, loginAgent: env.loginAgent, geocoder: env.geocoder)
+                                          audio: env.audio, loginAgent: env.loginAgent, geocoder: env.geocoder,
+                                          schedule: env.schedule, tv: env.tv, discovery: env.tvDiscovery)
             // The Form scrolls; size the window to its ideal height (720), never taller than the screen.
             let visible = NSScreen.main?.visibleFrame.height ?? 800
             let w = makeWindow(title: "Go Pray Settings", view: SettingsView(model: model), fitToContent: false)

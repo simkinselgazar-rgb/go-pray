@@ -15,6 +15,7 @@ struct SettingsView: View {
     @State private var showCredits = false
     @State private var lockDraft: Double?
     @State private var volumeDraft: Double?
+    @State private var tvAddress = ""
 
     private var s: Settings { model.settings }
 
@@ -32,6 +33,7 @@ struct SettingsView: View {
                 blockedAppsSection
                 pauseSection
                 athanSection
+                tvsSection
                 generalSection
             }
             .formStyle(.grouped)
@@ -224,6 +226,48 @@ struct SettingsView: View {
         }
     }
 
+    // MARK: TVs
+
+    private var tvsSection: some View {
+        Section("TVs") {
+            help("The Athan starts on your TV too. Your TV needs the Go Pray Roku app.")
+            ForEach(model.tvs) { tv in
+                TVRow(tv: tv, model: model)
+            }
+            LabeledContent {
+                Button(model.scanState == .scanning ? "Looking…" : "Find TVs") { Task { await model.scanForTVs() } }
+                    .disabled(model.scanState == .scanning)
+            } label: { Text("On your Wi-Fi") }
+            ForEach(model.foundTVs, id: \.host) { found in
+                LabeledContent {
+                    Button("Add") { Task { await model.addFound(found) } }
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(found.name)
+                        Text(found.host).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                    }
+                }
+            }
+            if model.scanNeedsNetworkAccess { help(SettingsViewModel.allowLocalNetworkLine) }
+            else if model.scanState == .done, model.foundTVs.isEmpty { help("No new Roku TVs found. You can add one by its address.") }
+            LabeledContent("Add by address") {
+                HStack {
+                    TextField("192.168.1.20", text: $tvAddress)
+                        .textFieldStyle(.roundedBorder).frame(width: 140).disableAutocorrection(true)
+                        .onSubmit { addTypedTV() }
+                    Button("Add") { addTypedTV() }.disabled(tvAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+            }
+        }
+    }
+
+    private func addTypedTV() {
+        let host = tvAddress
+        guard model.addTV(host: host, name: "") else { return }
+        tvAddress = ""
+        Task { if let id = model.tvs.first(where: { $0.host == host.trimmingCharacters(in: .whitespaces) })?.id { await model.refreshTV(id) } }
+    }
+
     // MARK: General
 
     private var generalSection: some View {
@@ -250,6 +294,48 @@ struct SettingsView: View {
 
     private func help(_ text: String) -> some View {
         Text(text).font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One TV: name (saved on Return or when you leave the field), on/off, Test, Remove.
+private struct TVRow: View {
+    let tv: TVDevice
+    @Bindable var model: SettingsViewModel
+    @State private var name = ""
+    @FocusState private var focused: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s8) {
+            HStack {
+                TextField("Name", text: $name)
+                    .textFieldStyle(.roundedBorder).focused($focused)
+                    .onSubmit { commit() }
+                    .accessibilityLabel("TV name")
+                Toggle("On", isOn: Binding(get: { tv.enabled }, set: { model.setTV(tv.id, enabled: $0) }))
+                    .labelsHidden().accessibilityLabel("Start the Athan on \(tv.name)")
+                Button { model.removeTV(tv.id) } label: { Image(systemName: "minus.circle") }
+                    .buttonStyle(.borderless).accessibilityLabel("Remove \(tv.name)")
+            }
+            if model.tvsNeedingNetworkAccess.contains(tv.id) { Text(SettingsViewModel.allowLocalNetworkLine).font(.callout).foregroundStyle(.secondary) }
+            else if !tv.installed { Text(SettingsViewModel.notInstalledLine).font(.callout).foregroundStyle(.secondary) }
+            HStack {
+                Text(tv.host).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
+                Spacer()
+                if let line = model.tvTestLines[tv.id] {
+                    Text(line).font(.callout).foregroundStyle(.secondary)
+                }
+                Button(model.testingTV == tv.id ? "Sending…" : "Test") { Task { await model.testTV(tv.id) } }
+                    .disabled(model.testingTV != nil)
+            }
+        }
+        .onAppear { name = tv.name }
+        .onChange(of: tv.name) { _, new in if !focused { name = new } }
+        .onChange(of: focused) { _, now in if !now { commit() } }
+    }
+
+    private func commit() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { name = tv.name } else if trimmed != tv.name { model.renameTV(tv.id, to: trimmed) }
     }
 }
 
