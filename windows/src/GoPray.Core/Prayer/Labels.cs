@@ -179,8 +179,8 @@ public static class Copy
         : left <= 0 ? "Emergency exits: none left until 1 January"
         : $"Emergency exits: {left} of {EmergencyExitPolicy.Total} left this year";
 
-    /// <summary>The shield footer: "Emergency exit · 3 of 5 left this year".</summary>
-    public static string EmergencyButton(int left) => $"Emergency exit · {left} of {EmergencyExitPolicy.Total} left this year";
+    /// <summary>The shield footer: "Hold for emergency exit · 3 of 5 left this year".</summary>
+    public static string EmergencyButton(int left) => $"Hold for emergency exit · {left} of {EmergencyExitPolicy.Total} left this year";
 
     public const string EmergencyHolding = "Keep holding…";
     public const string EmergencyCardTitle = "Use an emergency exit?";

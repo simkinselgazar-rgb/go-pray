@@ -265,8 +265,10 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
     /// The prayer is recorded as dropped, never confirmed.</summary>
     public bool RequestEmergencyExit()
     {
-        if (State.CurrentBlock is not { } b || Phase.Kind is not (PhaseKind.Locked or PhaseKind.CanConfirm)) return false;
-        if (!b.EmergencyExitsEnabled || _ledger == null || _ledger.Remaining(_clock.Now) <= 0) return false;
+        if (State.CurrentBlock is not { } b) { CoreLog.Notice("emergency exit refused: idle"); return false; }
+        if (Phase.Kind is not (PhaseKind.Locked or PhaseKind.CanConfirm)) { CoreLog.Notice("emergency exit refused: leaving"); return false; }
+        if (!b.EmergencyExitsEnabled) { CoreLog.Notice("emergency exit refused: exits off"); return false; }
+        if (_ledger == null || _ledger.Remaining(_clock.Now) <= 0) { CoreLog.Notice("emergency exit refused: none left"); return false; }
         try { _ledger.RecordUse(new EmergencyLedger.Use(b.Prayer, b.AthanAt, _clock.Now)); }
         catch (Exception e)
         {

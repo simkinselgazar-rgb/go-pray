@@ -272,6 +272,7 @@ internal sealed class ShieldController : IShieldPresenting
             case BridgeMessage.Emergency:
                 // The page draws the footer on the full and notice layouts only; an art slot's message is ignored.
                 if (!slot.IsMain || !IsPresenting || IsDismissing) return;
+                CoreLog.Notice("emergency requested");
                 slot.NeedsReshow = true;           // a refusal's Update re-syncs the page with the true count
                 Delegate?.ShieldDidRequestEmergencyExit();
                 break;

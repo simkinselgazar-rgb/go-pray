@@ -500,7 +500,7 @@ public class V2Tests
         Assert.Equal("Emergency exits: 3 of 5 left this year", Copy.EmergencyLine(true, 3));
         Assert.Equal("Emergency exits: none left until 1 January", Copy.EmergencyLine(true, 0));
         Assert.Equal("Emergency exits: off", Copy.EmergencyLine(false, 3));
-        Assert.Equal("Emergency exit · 3 of 5 left this year", Copy.EmergencyButton(3));
+        Assert.Equal("Hold for emergency exit · 3 of 5 left this year", Copy.EmergencyButton(3));
         Assert.Equal("This ends the block now. Asr will count as missed, not prayed. You'll have 2 of 5 left this year.", Copy.EmergencyCardBody(Prayer.Asr, 3));
         Assert.Equal("This ends the block now. Isha will count as missed, not prayed. This is your last one this year.", Copy.EmergencyCardBody(Prayer.Isha, 1));
     }

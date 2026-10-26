@@ -180,8 +180,8 @@ public class V2AppTests : IDisposable
     {
         Assert.Equal("0.2.0", UI.AppVersion.Clean("0.2.0+6dc13d1d9620cea87f5629cbd5a10014b8aeef25"));
         Assert.Equal("0.0.0", UI.AppVersion.Clean(null));
-        Assert.Equal("Go Pray 0.3.2", UI.AppVersion.Line);                     // <Version> in GoPray.App.csproj
-        Assert.Equal(new Version(0, 3, 2, 0), typeof(UpdateChecker).Assembly.GetName().Version);   // what the checker compares
+        Assert.Equal("Go Pray 0.3.3", UI.AppVersion.Line);                     // <Version> in GoPray.App.csproj
+        Assert.Equal(new Version(0, 3, 3, 0), typeof(UpdateChecker).Assembly.GetName().Version);   // what the checker compares
     }
 
     [Fact]
@@ -242,7 +242,7 @@ public class V2AppTests : IDisposable
         Assert.False(v.ExitVisible);
         m.Apply(Ctx(3));
         Assert.True(v.ExitVisible);
-        Assert.Equal("Emergency exit · 3 of 5 left this year", v.ExitText);
+        Assert.Equal("Hold for emergency exit · 3 of 5 left this year", v.ExitText);
         await Task.CompletedTask;
     });
 
@@ -324,7 +324,7 @@ public class V2AppTests : IDisposable
             var web = c.Slots[0].Web!;
             Assert.True(await Ui.Until(4, () => c.Slots[0].Ready));
             Assert.True(await Ui.UntilAsync(2, () => Fixture.BlockBuilt(web)));
-            Assert.True(await Ui.UntilAsync(2, async () => await Fixture.Text(web, "document.querySelector('.exit-label')?.textContent ?? ''") == "Emergency exit · 3 of 5 left this year"));
+            Assert.True(await Ui.UntilAsync(2, async () => await Fixture.Text(web, "document.querySelector('.exit-label')?.textContent ?? ''") == "Hold for emergency exit · 3 of 5 left this year"));
             await web.Js("document.querySelector('.exit-btn').dispatchEvent(new PointerEvent('pointerdown', { button: 0, bubbles: true }))");
             await Task.Delay(1000);
             await web.Js("document.querySelector('.exit-btn').dispatchEvent(new PointerEvent('pointerup', { button: 0, bubbles: true }))");   // released early
