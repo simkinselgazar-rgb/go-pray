@@ -8,7 +8,7 @@
   'use strict';
   const GP = window.GoPray;
   const ORDER = ['fajr', 'dhuhr', 'asr', 'maghrib', 'isha'];
-  const LAYOUTS = ['full', 'notice', 'art'];
+  const LAYOUTS = ['full', 'notice', 'art', 'portrait'];
   const MAX_MS = 30 * 60 * 1000;
   const HOLD_MS = 3000;
   const MAX_EXITS = 5;
@@ -22,6 +22,53 @@
   const sceneEl = document.getElementById('scene');
   const stage = new GP.Stage(sceneEl);
   GP.stage = stage;
+
+  // iPhone portrait. The approved scenes are 1600 x 1000 with the subject on the right, and watercolor.js is
+  // not edited, so the phone "camera" lives here: per prayer a scale and the virtual point that should sit in
+  // the lower half. The painted frame is bottom-aligned; the empty top of the screen is the prayer's own ground
+  // colour and the top edge of the paint is feathered into it (a wet edge), so the sky above the subject stays
+  // calm for the name. Only active with layout=portrait; every other layout takes the untouched code path.
+  const CAMERAS = {            // s: pixels per virtual unit at a 393 pt wide screen; fx: virtual x centred on screen
+    fajr: { s: 0.54, fx: 1050 },
+    dhuhr: { s: 0.44, fx: 1190 },
+    asr: { s: 0.44, fx: 900 },
+    maghrib: { s: 0.44, fx: 1090 },
+    isha: { s: 0.42, fx: 1090 },
+  };
+  let portrait = null;         // { prayer } while a portrait scene is painted
+  const origView = stage.view;
+  const origShow = stage.show;
+  function portraitView(self) {
+    const w = self.host.clientWidth, h = self.host.clientHeight;
+    const cam = CAMERAS[portrait.prayer];
+    // scale follows the screen width so an iPad or a small phone keeps the same composition
+    const s = cam.s * (w / 393);
+    let ox = w / 2 - cam.fx * s;
+    ox = Math.min(0, Math.max(w - GP.wc.VW * s, ox));   // never show past the painted edge
+    return { w, h, s, ox, oy: h - GP.wc.VH * s, pr: Math.min(window.devicePixelRatio || 1, 2) };
+  }
+  stage.view = function () { return portrait ? portraitView(this) : origView.call(this); };
+  stage.show = function (id, opts) {
+    origShow.call(this, id, opts);
+    if (!portrait) return;
+    const v = portraitView(this);
+    const ink = this.host.querySelector('.scene-ink');
+    if (ink) {   // the pen layer is sized by its viewBox; give it the same window as the canvases
+      ink.setAttribute('viewBox', [-v.ox / v.s, -v.oy / v.s, v.w / v.s, v.h / v.s].join(' '));
+      ink.setAttribute('preserveAspectRatio', 'none');
+    }
+    const fade = Math.round(Math.min(v.oy, v.h * 0.3));
+    const stops = [];   // a smoothstep ramp, so the edge of the paint has no visible start line
+    for (let i = 0; i <= 8; i++) {
+      const t = i / 8, a = t * t * (3 - 2 * t);
+      stops.push('rgba(0,0,0,' + a.toFixed(3) + ') ' + Math.round(v.oy + fade * t) + 'px');
+    }
+    const mask = 'linear-gradient(to bottom, ' + stops.join(', ') + ')';
+    this.host.querySelectorAll(':scope > canvas, :scope > svg').forEach((el) => {
+      el.style.webkitMaskImage = mask;
+      el.style.maskImage = mask;
+    });
+  };
 
   let ui = null;
   let cur = null;        // { prayer, layout, reduce } of what is painted now
@@ -48,7 +95,7 @@
     if (left <= 0 && !exitNote) return;
     const root = document.createElement('div');
     root.className = 'exit';
-    const label = 'Emergency exit \u00b7 ' + left + ' of ' + MAX_EXITS + ' left this year';
+    const label = 'Hold for emergency exit \u00b7 ' + left + ' of ' + MAX_EXITS + ' left this year';
     if (left > 0) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -67,6 +114,11 @@
         clearTimeout(timer); timer = 0;
         btn.classList.remove('is-holding');
         text.textContent = label;
+        // Released before the hold finished: say why nothing happened.
+        exitNote = 'Keep holding for 3 seconds.';
+        const n = document.querySelector('.exit-note'); if (n) n.textContent = exitNote;
+        clearTimeout(exitNoteTimer);
+        exitNoteTimer = setTimeout(() => { exitNote = ''; const m = document.querySelector('.exit-note'); if (m) m.textContent = ''; }, 4000);
       };
       const begin = () => {
         if (timer || exitPending) return;
@@ -74,8 +126,14 @@
         text.textContent = 'Keep holding\u2026';
         timer = setTimeout(() => { timer = 0; btn.classList.remove('is-holding'); text.textContent = label; openCard(prayer, left, root); }, HOLD_MS);
       };
-      btn.addEventListener('pointerdown', (e) => { if (e.button === 0) { e.preventDefault(); begin(); } });
-      ['pointerup', 'pointercancel', 'pointerleave', 'blur'].forEach((n) => btn.addEventListener(n, stop));
+      btn.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        // Keep the hold alive if a trackpad drifts off the small button.
+        try { btn.setPointerCapture(e.pointerId); } catch (_) { /* synthetic or already released */ }
+        begin();
+      });
+      ['pointerup', 'pointercancel', 'lostpointercapture', 'blur'].forEach((n) => btn.addEventListener(n, stop));
       root.appendChild(btn);
     }
     const note = document.createElement('p');
@@ -174,7 +232,7 @@
     const same = !!cur && cur.prayer === prayer && cur.layout === layout && cur.reduce === reduce;
 
     document.documentElement.classList.toggle('reduce', reduce);
-    document.documentElement.classList.remove('layout-full', 'layout-notice', 'layout-art');
+    document.documentElement.classList.remove('layout-full', 'layout-notice', 'layout-art', 'layout-portrait');
     document.documentElement.classList.add('layout-' + layout);
     dropUI();
 
@@ -186,8 +244,9 @@
       if (mine !== token) return;
     }
     cur = { prayer: prayer, layout: layout, reduce: reduce };
+    portrait = layout === 'portrait' ? { prayer: prayer } : null;
 
-    if (layout !== 'art') {
+    if (layout !== 'art' && layout !== 'portrait') {
       ui = GP.BlockUI(shield, {
         prayer: prayer,
         durationMs: Math.max(1, remainingMs),   // 0 would make the ring NaN

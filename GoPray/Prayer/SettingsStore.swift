@@ -21,8 +21,6 @@ import os
     func authorizeSettingsChange() throws
 }
 
-extension BlockGate: SettingsChangeAuthorizing {}
-
 @MainActor @Observable final class SettingsStore {
     private(set) var settings: Settings
     /// True when settings.json could not be read and was set aside (the app starts fresh).

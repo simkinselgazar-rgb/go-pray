@@ -231,6 +231,7 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "shield
             guard slot.isMain, isPresenting, !isDismissing else { return }
             // Like `prayed`: if the gate refuses, its `update` rebuilds the page with the true count.
             slot.needsReshow = true
+            log.notice("emergency requested")
             delegate?.shieldDidRequestEmergencyExit()
         case .gone:
             if isDismissing, slot.isMain { finishDismiss() }

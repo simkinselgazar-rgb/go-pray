@@ -15,5 +15,5 @@ b2ca342a5b44b4db72da22df753dd5e62c7eb58c901641d0cfa637b927b40894  fonts/Amiri-Re
 60700d351cac4650c51f3f9db318d2a420f8b45052dba2715eb5fec41f0f6956  fonts/OFL-CormorantGaramond.txt
 # --- app-only (edit, then re-run sync-assets.sh) ---
 1e6edc0277a2b036f34170fd9454c9ca502e38d90b65b9ccc4f130ec134902ee  shield.html
-caa0a336083cf2dce1d1a8d8bc86bb08bd3b43826978755558ef827176760949  bridge.js
+f8aa4f2747427134299961b367a757361af608c32af1eb1d3fd39520528331bc  bridge.js
 a1d1fecfa67ce9a6ba8acd9e52a40a85c95bff55d3021a25bca6e6766663a296  shield.css

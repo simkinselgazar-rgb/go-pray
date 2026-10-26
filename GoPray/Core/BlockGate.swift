@@ -215,13 +215,25 @@ import os
     /// written (the person is never trapped: the normal lock path is untouched). The ledger write
     /// comes first; the block ends right after it with no work in between.
     @discardableResult func requestEmergencyExit() -> Bool {
-        guard let b = state.block, b.emergencyExitsEnabled else { return false }
+        guard let b = state.block, b.emergencyExitsEnabled else {
+            if state.block == nil { log.notice("emergency exit refused: idle") }
+            else { log.notice("emergency exit refused: exits off") }
+            return false
+        }
         switch phase {
         case .locked, .canConfirm: break
-        case .idle, .leaving: return false
+        case .idle:
+            log.notice("emergency exit refused: idle")
+            return false
+        case .leaving:
+            log.notice("emergency exit refused: leaving")
+            return false
         }
         let now = clock.now
-        guard ledger.remaining(at: now) > 0 else { return false }
+        guard ledger.remaining(at: now) > 0 else {
+            log.notice("emergency exit refused: none left")
+            return false
+        }
         do { try ledger.recordUse(.init(prayer: b.prayer, athanAt: b.athanAt, at: now), now: now) }
         catch {
             log.error("emergency exit refused: ledger write failed")
@@ -471,3 +483,5 @@ extension BlockGate: ShieldDelegate {
         if !requestEmergencyExit(), let ctx = shieldContext() { shield.update(ctx) }
     }
 }
+
+extension BlockGate: SettingsChangeAuthorizing {}

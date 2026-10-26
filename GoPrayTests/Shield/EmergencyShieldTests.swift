@@ -60,11 +60,35 @@ struct EmergencyShieldTests {
         #expect(await web.js("String(GoPrayBridge.violations())") == "0")
     }
 
+    @Test func anEarlyReleaseSaysKeepHolding() async throws {
+        var got: [BridgeMessage] = []
+        let (web, win) = try await page(left: 5) { got.append($0) }
+        defer { web.shutDown(); win.contentView = nil; win.close() }
+        await fire(web, ".exit-btn", "pointerdown")
+        try? await Task.sleep(for: .milliseconds(500))
+        await fire(web, ".exit-btn", "pointerup")
+        #expect(await web.js("document.querySelector('.exit-note').textContent") == "Keep holding for 3 seconds.")
+        #expect(await web.js("String(document.querySelectorAll('.exit-card').length)") == "0")
+        #expect(got.isEmpty)
+        try? await Task.sleep(for: .milliseconds(4500))
+        #expect(await web.js("document.querySelector('.exit-note').textContent") == "")
+    }
+
+    @Test func driftDoesNotCancelTheHold() async throws {
+        let (web, win) = try await page(left: 5) { _ in }
+        defer { web.shutDown(); win.contentView = nil; win.close() }
+        await fire(web, ".exit-btn", "pointerdown")
+        try? await Task.sleep(for: .seconds(1))
+        await fire(web, ".exit-btn", "pointerleave")
+        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Keep holding…")
+        #expect(await until(5) { await web.js("String(document.querySelectorAll('.exit-card').length)") == "1" })
+    }
+
     @Test func holdForThreeSecondsThenCardThenOneMessage() async throws {
         var got: [BridgeMessage] = []
         let (web, win) = try await page(left: 5) { got.append($0) }
         defer { web.shutDown(); win.contentView = nil; win.close() }
-        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Emergency exit · 5 of 5 left this year")
+        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Hold for emergency exit · 5 of 5 left this year")
 
         // Release at 2.9 s: nothing happens.
         await fire(web, ".exit-btn", "pointerdown")
@@ -73,7 +97,7 @@ struct EmergencyShieldTests {
         await fire(web, ".exit-btn", "pointerup")
         try? await Task.sleep(for: .milliseconds(500))
         #expect(await web.js("String(document.querySelectorAll('.exit-card').length)") == "0")
-        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Emergency exit · 5 of 5 left this year")
+        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Hold for emergency exit · 5 of 5 left this year")
         #expect(got.isEmpty)
 
         // Hold to 3 s: the card shows, and it says what it costs.
@@ -102,7 +126,7 @@ struct EmergencyShieldTests {
     @Test func lastExitSaysSoOnTheCard() async throws {
         let (web, win) = try await page(left: 1) { _ in }
         defer { web.shutDown(); win.contentView = nil; win.close() }
-        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Emergency exit · 1 of 5 left this year")
+        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Hold for emergency exit · 1 of 5 left this year")
         await fire(web, ".exit-btn", "pointerdown")
         #expect(await until(5) { await web.js("String(document.querySelectorAll('.exit-card').length)") == "1" })
         #expect(await web.js("document.querySelector('.exit-body').textContent").hasSuffix("This is your last one this year."))
@@ -141,7 +165,7 @@ struct EmergencyShieldTests {
     @Test func noticeLayoutHasTheSameFooter() async throws {
         let (web, win) = try await page(left: 3, layout: .notice) { _ in }
         defer { web.shutDown(); win.contentView = nil; win.close() }
-        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Emergency exit · 3 of 5 left this year")
+        #expect(await web.js("document.querySelector('.exit-label').textContent") == "Hold for emergency exit · 3 of 5 left this year")
     }
 
     // MARK: Controller + fallback
