@@ -1,0 +1,35 @@
+# Go Pray for iPhone: privacy
+
+Last updated: 2026-10-25
+
+**Go Pray does not collect your data. Nothing leaves your phone.**
+
+There are no accounts, no servers of ours, no analytics, no ads and no tracking.
+
+## What the app keeps on your phone
+
+- Your settings: city, prayer calculation method, Athan voice, break length, pause.
+- Which prayers you have marked as done, and how many emergency exits you have used this year.
+- The apps you chose to keep open during a break.
+
+All of this stays in the app's own storage on your iPhone. If you delete the app, it is deleted.
+
+## Screen Time
+
+Go Pray uses Apple's Screen Time API (Family Controls) to cover other apps during a break. You choose which apps stay open in Apple's own picker. Apple gives the app opaque tokens, not app names, so Go Pray cannot see which apps you picked. Nothing about them is sent anywhere. You can turn this off any time in Settings, Screen Time, Go Pray.
+
+## Your city
+
+When you type a city, the app asks Apple's location service (the iOS geocoder) to turn it into coordinates. That request goes to Apple and is covered by Apple's privacy terms. Go Pray never sends it anywhere else. Prayer times are then worked out on your phone.
+
+## Notifications
+
+The Athan is a local notification set up on your phone. No push server is involved.
+
+## Children
+
+Go Pray has no accounts and collects nothing from anyone.
+
+## Contact
+
+hello@simkinselgazar.com
