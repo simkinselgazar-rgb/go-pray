@@ -2,7 +2,7 @@
 
 Last updated: 2026-10-25
 
-**Go Pray does not collect your data. Nothing leaves your phone.**
+**Go Pray does not collect your data. Nothing is sent to us.** The only thing that leaves your phone is the city you type, which Apple's own map service turns into coordinates (see "Your city" below).
 
 There are no accounts, no servers of ours, no analytics, no ads and no tracking.
 
