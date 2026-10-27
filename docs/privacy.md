@@ -1,8 +1,8 @@
 # Go Pray for iPhone: privacy
 
-Last updated: 2026-10-25
+Last updated: 2026-10-26
 
-**Go Pray does not collect your data. Nothing is sent to us.** The only thing that leaves your phone is the city you type, which Apple's own map service turns into coordinates (see "Your city" below).
+**Go Pray does not collect your data. Nothing is sent to us.** The only things that leave your phone go to Apple's own map service: the city you type, or, if you turn on "Follow my location", your rough location (see "Your city" and "Follow my location" below).
 
 There are no accounts, no servers of ours, no analytics, no ads and no tracking.
 
@@ -21,6 +21,10 @@ Go Pray uses Apple's Screen Time API (Family Controls) to cover other apps durin
 ## Your city
 
 When you type a city, the app asks Apple's location service (the iOS geocoder) to turn it into coordinates. That request goes to Apple and is covered by Apple's privacy terms. Go Pray never sends it anywhere else. Prayer times are then worked out on your phone.
+
+## Follow my location
+
+This is off unless you turn it on in Settings. When it is on, and only while the app is open, Go Pray asks iOS for your approximate location (about a kilometre, never precise), at most once every 15 minutes. The coordinates are rounded and sent to Apple's location service to get the city name, the same way a typed city is. The app keeps only your current city, not a history of where you have been, and never sends your location anywhere else. Turn it off in Go Pray's Settings, or in iPhone Settings, Privacy, Location Services.
 
 ## Notifications
 
