@@ -19,7 +19,7 @@ internal readonly record struct ShieldPalette(Color Ground, Color Text)
         Prayer.Fajr => new(Hex(0x0e0705), Hex(0xf2e4cc)),
         Prayer.Dhuhr => new(Hex(0xf0eee7), Hex(0x17232a)),
         Prayer.Asr => new(Hex(0xf1ece4), Hex(0x2d1c0e)),
-        Prayer.Maghrib => new(Hex(0xf8de9c), Hex(0x241c0d)),
+        Prayer.Maghrib => new(Hex(0xf1d9bd), Hex(0x241c0d)),
         _ => new(Hex(0x08080f), Hex(0xede9e1)),
     };
 

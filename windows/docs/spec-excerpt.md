@@ -73,10 +73,10 @@ Rewritten 2026-10-22 by the scenes lane, to match `design/scenes/` (supersedes t
 | **Fajr** | window light `#FEFCF5` (s), `#F5D4A0` (s), haze `#CFA371` (s) | pillar `#73492D` (s), wall `#513223` (s), shadow `#2A1A11` (d), near-black `#0E0705` (s) | shaft `#976742` (s), lit floor `#C3926B` (s), glow `#F5D4A0` (s) | `#120A06` (d) | `#F2E4CC` / `#C9B293` (d) | `#F5D4A0` (s) |
 | **Dhuhr** | `#44687E` (s), `#829BA3` (s), `#A4ADAC` (s) | minaret `#FADAAB` (s), `#EDBC82` (s), shade `#A9825A` (d), `#2B3A24` (d) | dome `#58683D` (s), brass `#9B774F` (s), glow `#F0CD9F` (s) | `#1F2A2E` (d) | `#17232A` / `#34444B` (d) | `#2E4D60` (d) |
 | **Asr** | `#DEE9F3` (s), `#D8DFE6` (s), haze `#E8DCCB` (d) | marble `#EEE9E2` (d), `#D6D1CE` (s), `#A8A19A` (s), `#4A3521` (s) | gold `#9C7F5C` (s), green dome `#447E6F` (s), lantern `#F6D9A2` (e) | `#2D1C0E` (s) | `#2D1C0E` (s) / `#5C4835` (s) | `#7A5C22` (d) |
-| **Maghrib** | dusk `#83847F` (s), amber `#E4B86B` (s), near sun `#FEF4B9` (s) | haze `#DDAC5F` (s), `#9C6A33` (s), `#543F24` (s), roofs `#1F1808` (s) | gold dome `#A36E30` (s), sun `#FEFDEE` (s), glow `#F8DE9C` (s) | `#241C0D` (s) | `#241C0D` (s) / `#4B3719` (d) | `#5C3A12` (d) |
+| **Maghrib** | dusk `#D9C0C8` (s), amber `#EC9894` (s), near sun `#FEDCBC` (s) | haze `#DBA073` (s), `#94623D` (s), `#523B2B` (s), roofs `#1F1808` (s) | gold dome `#A36E30` (s), sun `#FEFDEE` (s), glow `#F1D9BD` (s) | `#241C0D` (s) | `#241C0D` (s) / `#4B3719` (d) | `#5C3A12` (d) |
 | **Isha** | night `#08080F` (s), far city `#16151C` (s), tower `#1A191A` (s) | white light `#D3D3D4` (s), `#9D9B9C` (s), `#43423E` (s), Kaaba `#12141A` (s) | Kaaba band `#B8935A` (e), clock green `#4B8E72` (s), arcade light `#E2B97A` (e) | `#E9E6DF` (d, pale: night linework) | `#EDE9E1` / `#B9B4AA` (d) | `#62A38E` (s) |
 
-`ground` is the colour shown before the paint blooms: Fajr `#0E0705`, Dhuhr `#F0EEE7` (paper, from the style reference), Asr `#F1ECE4`, Maghrib `#F8DE9C`, Isha `#08080F`.
+`ground` is the colour shown before the paint blooms: Fajr `#0E0705`, Dhuhr `#F0EEE7` (paper, from the style reference), Asr `#F1ECE4`, Maghrib `#F1D9BD`, Isha `#08080F`.
 
 ### Contrast, measured on the painted scenes
 Measured on 1440×900 renders: UI hidden, background under each text box cropped, blurred 2px (so paper grain does not count), linear-light Rec.709 luminance, worst case of the darkest and lightest pixel against the text colour. AA = 4.5 (small text), 3.0 (large text, the name, graphics).

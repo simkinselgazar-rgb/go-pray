@@ -99,17 +99,17 @@
   --ring: #7a5c22;     /* (d) gold, deepened for contrast */
 }
 [data-prayer='maghrib'] {
-  --ground: #f8de9c;   /* (s) */
-  --sky-1: #83847f;    /* (s) dusk, top */
-  --sky-2: #e4b86b;    /* (s) amber */
-  --sky-3: #fef4b9;    /* (s) near the sun */
-  --stone-1: #ddac5f;  /* (s) far haze */
-  --stone-2: #9c6a33;  /* (s) mid silhouettes */
-  --stone-3: #543f24;  /* (s) near silhouettes */
+  --ground: #f1d9bd;   /* (s) */
+  --sky-1: #d9c0c8;    /* (s) dusk, top */
+  --sky-2: #ec9894;    /* (s) amber */
+  --sky-3: #fedcbc;    /* (s) near the sun */
+  --stone-1: #dba073;  /* (s) far haze */
+  --stone-2: #94623d;  /* (s) mid silhouettes */
+  --stone-3: #523b2b;  /* (s) near silhouettes */
   --deep: #1f1808;     /* (s) foreground roofs */
   --accent-1: #a36e30; /* (s) gold dome */
   --accent-2: #fefdee; /* (s) sun */
-  --glow: #f8de9c;     /* (s) */
+  --glow: #f1d9bd;     /* (s) */
   --ink: #241c0d;      /* (s) */
   --text: #241c0d;     /* (s) */
   --text-soft: #4b3719;/* (d) */
