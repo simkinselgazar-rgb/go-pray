@@ -19,7 +19,7 @@
 ;   /DAppIdValue=… /DMutexName=… /DQuitMessage=… /DTaskName=…
 
 #ifndef AppVersion
-  #define AppVersion "0.3.5"
+  #define AppVersion "0.3.6"
 #endif
 #ifndef AppIdValue
   #define AppIdValue "{{6F3C1E52-8B0A-4C5D-9E1B-2D7A4F9C3B61}"
