@@ -21,7 +21,7 @@ internal sealed class TrayIcon : IDisposable
         Menu = new ContextMenuStrip();
         Menu.Items.Add("Open Go Pray", null, (_, _) => openPopover());
         Menu.Items.Add("Settings…", null, (_, _) => openSettings());
-        _updates = new ToolStripMenuItem("Check for updates…", null, (_, _) => checkForUpdates());
+        _updates = new ToolStripMenuItem(UI.PopoverWindow.CheckForUpdatesLabel, null, (_, _) => checkForUpdates());
         Menu.Items.Add(_updates);
         Menu.Items.Add("Credits", null, (_, _) => openCredits());
         Menu.Items.Add(new ToolStripSeparator());

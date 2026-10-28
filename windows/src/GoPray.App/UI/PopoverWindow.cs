@@ -173,31 +173,39 @@ internal sealed class PopoverWindow : Window
         _root.Children.Add(g);
     }
 
-    /// <summary>"Update available: 0.2.0 — Download", or the checker's last line ("You're up to date." …). Disabled
-    /// during a block (the checker refuses then too).</summary>
+    /// <summary>"Update available: 0.2.0 — Download", or the checker's last line ("You're up to date." …) with a quiet
+    /// "Check for updates…" link (0.3.6: the right-click menu had the only one). The link calls the same
+    /// UpdateChecker.CheckNow as the tray item. Disabled during a block (the checker refuses then too) and while a check
+    /// or download runs.</summary>
     void UpdateRow(MenuSnapshot snap)
     {
         if (_updates is not { } u) return;
-        UIElement? row = null;
+        FrameworkElement row;
         if (u.Status == UpdateStatus.Available && u.Latest is { } r)
         {
             var link = Theme.Link($"Update available: {r.Version.ToString(3)} — Download", () => { _ = u.DownloadAndOpen(); });
             link.IsEnabled = !snap.IsBlocked;
             row = link;
         }
-        else if (u.Message is { } m)
+        else
         {
             var p = new StackPanel();
-            p.Children.Add(Theme.Text(m, 11, Theme.Secondary));
+            var line = u.Status == UpdateStatus.Checking ? "Checking…" : u.Message;
+            if (line != null) p.Children.Add(Theme.Text(line, 11, Theme.Secondary));
             if (u.Status == UpdateStatus.Failed)
                 p.Children.Add(Theme.Link("Open the releases page", UpdateChecker.OpenReleasesPage));
+            var check = Theme.Link(CheckForUpdatesLabel, () => { _ = u.CheckNow(); Render(); });
+            check.IsEnabled = !snap.IsBlocked && u.Status is not (UpdateStatus.Checking or UpdateStatus.Downloading);
+            p.Children.Add(check);
             row = p;
         }
-        if (row == null) return;
         _root.Children.Add(Theme.Divider());
-        if (row is FrameworkElement fe) fe.Margin = new Thickness(Theme.S16, Theme.S8, Theme.S16, Theme.S8);
+        row.Margin = new Thickness(Theme.S16, Theme.S8, Theme.S16, Theme.S8);
         _root.Children.Add(row);
     }
+
+    /// <summary>The same words as the tray's right-click item.</summary>
+    internal const string CheckForUpdatesLabel = "Check for updates…";
 
     void Empty(string text, string button, Action action)
     {
