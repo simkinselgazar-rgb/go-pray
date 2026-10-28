@@ -142,8 +142,8 @@
 		71F5682709DCC48C9EA4BABB = {
 			isa = PBXGroup;
 			children = (
-				5E2BFEB55A77E2A939205976 /* GoPray */,
 				590F328DE8EAEB00D130F0E6 /* GoPray */,
+				5E2BFEB55A77E2A939205976 /* GoPray */,
 				EAFA7925C2184463370D6D77 /* GoPrayTests */,
 				9E31CAA6435CAB8BD693656D /* Products */,
 			);
@@ -458,7 +458,7 @@
 				CODE_SIGN_IDENTITY = "Developer ID Application";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 3BB4JMG8GR;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = GoPray/Info.plist;
@@ -466,7 +466,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray;
 				PRODUCT_MODULE_NAME = GoPray;
 				PRODUCT_NAME = "Go Pray";
@@ -559,14 +559,14 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				ENABLE_HARDENED_RUNTIME = NO;
 				INFOPLIST_FILE = GoPray/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.3.2;
+				MARKETING_VERSION = 0.3.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.ahmedelgazar.gopray;
 				PRODUCT_MODULE_NAME = GoPray;
 				PRODUCT_NAME = "Go Pray";

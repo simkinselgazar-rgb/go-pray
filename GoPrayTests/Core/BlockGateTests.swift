@@ -164,6 +164,95 @@ struct BlockGateTests {
         #expect(try h.diskState().lastConfirmed == nil)
     }
 
+    // MARK: Late start rule (Late Wake Fix Spec): > 30 min after the Athan = no Athan, "I prayed" open at once
+
+    @Test func unlockFiveMinutesAfterTheAthanIsTheNormalBlock() throws {
+        let h = Harness(at: asr.addingTimeInterval(-60)); defer { h.cleanup() }
+        let wake = asr.addingTimeInterval(5 * 60)
+        h.clock.now = wake
+        h.gate.reevaluate(.wake)
+        #expect(h.gate.phase == .locked(until: wake.addingTimeInterval(600)))
+        #expect(h.audio.plays.count == 1)
+        #expect(h.gate.currentBlock?.athanPlayed == true)
+    }
+
+    @Test func unlockHoursAfterIshaShowsALateBlockWithNoAthanAndPrayedOpen() throws {
+        let isha = FakeSchedule.at(.isha)
+        let h = Harness(at: isha.addingTimeInterval(-60)); defer { h.cleanup() }
+        h.clock.now = isha.addingTimeInterval(3 * 3600)
+        h.gate.reevaluate(.wake)
+        #expect(h.gate.currentBlock?.prayer == .isha)
+        #expect(h.audio.plays.isEmpty)
+        #expect(h.shield.shows.count == 1)
+        #expect(h.shield.shows[0].remainingMs == 0)
+        #expect(h.gate.phase == .canConfirm)
+        #expect(h.gate.currentBlock?.athanPlayed == false)
+        #expect(try h.diskState().block?.lockSeconds == 0)
+        #expect(h.tv.calls.isEmpty)
+        #expect(h.gate.requestConfirm())
+        #expect(try h.diskState().lastConfirmed == .init(prayer: .isha, athanAt: isha))
+    }
+
+    @Test func exactlyThirtyMinutesIsNormalAndOneSecondMoreIsLate() throws {
+        let h = Harness(at: asr.addingTimeInterval(-60)); defer { h.cleanup() }
+        h.clock.now = asr.addingTimeInterval(1800)
+        h.gate.reevaluate(.wake)
+        #expect(h.gate.phase == .locked(until: asr.addingTimeInterval(1800 + 600)))
+        #expect(h.audio.plays.count == 1)
+
+        let h2 = Harness(at: asr.addingTimeInterval(-60)); defer { h2.cleanup() }
+        h2.clock.now = asr.addingTimeInterval(1801)
+        h2.gate.reevaluate(.wake)
+        #expect(h2.gate.phase == .canConfirm)
+        #expect(h2.audio.plays.isEmpty)
+    }
+
+    @Test func staleTimerThenWakeTwoHoursLaterIsALateBlockWithNoAthan() throws {
+        let isha = FakeSchedule.at(.isha)
+        let h = Harness(at: isha.addingTimeInterval(-60)); defer { h.cleanup() }
+        h.clock.now = isha.addingTimeInterval(2 * 3600)       // the machine slept across Isha; the timer fires late
+        h.gate.athanFired(.isha, at: isha)
+        h.gate.reevaluate(.wake)
+        #expect(h.audio.plays.isEmpty)
+        #expect(h.shield.shows.count == 1)
+        #expect(h.gate.phase == .canConfirm)
+    }
+
+    @Test func relaunchHoursAfterTheAthanIsALateBlockWithNoAthan() throws {
+        let h = Harness(at: asr.addingTimeInterval(-60)); defer { h.cleanup() }
+        h.clock.now = asr.addingTimeInterval(2 * 3600)
+        h.relaunch()
+        #expect(h.gate.currentBlock?.prayer == .asr)
+        #expect(h.audio.plays.isEmpty)
+        #expect(h.gate.phase == .canConfirm)
+    }
+
+    @Test func aLateBlockResumesAsTheSameLateBlockAndTheEmergencyExitWorks() throws {
+        let h = Harness(at: asr.addingTimeInterval(-60)); defer { h.cleanup() }
+        h.clock.now = asr.addingTimeInterval(2 * 3600)
+        h.gate.reevaluate(.wake)
+        h.clock.now = asr.addingTimeInterval(2 * 3600 + 120)
+        h.relaunch()
+        #expect(h.audio.plays.isEmpty)
+        #expect(h.gate.phase == .canConfirm)                  // no fresh lock
+        #expect(h.gate.currentBlock?.blockStartedAt == asr.addingTimeInterval(2 * 3600))
+        #expect(h.gate.requestEmergencyExit())
+        #expect(h.gate.phase != .canConfirm)
+    }
+
+    @Test func aNormalBlockRelaunchedPastThirtyMinutesKeepsItsLock() throws {
+        let h = Harness(at: asr.addingTimeInterval(-60)); defer { h.cleanup() }
+        let start = asr.addingTimeInterval(25 * 60)
+        h.clock.now = start
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.audio.plays.count == 1)
+        h.clock.now = asr.addingTimeInterval(31 * 60)
+        h.relaunch()
+        #expect(h.gate.phase == .locked(until: start.addingTimeInterval(600)))
+        #expect(h.audio.plays.isEmpty)                         // relaunch: fresh fakes, no replay
+        #expect(h.gate.requestConfirm() == false)             // no free unlock
+    }
+
     // MARK: E.4 overlap
 
     @Test func nextAthanDuringBlockReplacesIt() throws {

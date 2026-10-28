@@ -54,6 +54,9 @@ import os
     static let crashLoopLaunches = 3
     /// The TV is called only within this long after the prayer's real Athan time (CONTRACT-NOTES #66).
     static let tvLateWakeLimit: TimeInterval = 180
+    /// Late-start rule (Late Wake Fix Spec): a block that starts more than this long after the prayer's
+    /// Athan shows with no Athan and no lock ("I prayed" is open at once). Same name and value on Windows.
+    static let lateStartLimit: TimeInterval = 30 * 60
     static let crashLoopWindow: TimeInterval = 120
 
     // MARK: State
@@ -340,14 +343,22 @@ import os
             shield.tearDown()
         }
         let s = settings()
-        state.block = .init(prayer: prayer, athanAt: athanAt, blockStartedAt: now, silenced: false, athanPlayed: true,
-                            lockSeconds: lockSeconds,   // captured: later settings changes cannot touch it
+        // The one choke point for the late-start rule: every block start (live Athan, wake, launch, stale timer) lands here.
+        // A zero lock is the existing "canConfirm at once" state, so no new mode is needed; it is persisted like any lock,
+        // so a relaunch resumes the same late block (present(freshAthan: false)): no Athan, no fresh lock.
+        let late = now.timeIntervalSince(athanAt) > Self.lateStartLimit
+        state.block = .init(prayer: prayer, athanAt: athanAt, blockStartedAt: now, silenced: false, athanPlayed: !late,
+                            lockSeconds: late ? 0 : lockSeconds,   // captured: later settings changes cannot touch it
                             hiddenApps: BlockedApps.effective(s, defaults: defaultApps).sorted(),
                             emergencyExitsEnabled: s.emergencyExitsEnabled)
         state.launches = []
         persist()                         // on disk BEFORE the shield goes up
-        log.notice("block start \(prayer.rawValue, privacy: .public)")
-        present(freshAthan: true)
+        if late {
+            log.notice("block late \(prayer.rawValue, privacy: .public): no athan, prayed open")
+        } else {
+            log.notice("block start \(prayer.rawValue, privacy: .public)")
+        }
+        present(freshAthan: !late)
     }
 
     private func present(freshAthan: Bool) {
