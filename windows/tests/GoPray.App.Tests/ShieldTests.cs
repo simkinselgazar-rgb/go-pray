@@ -71,6 +71,28 @@ public class ShieldTests(ITestOutputHelper output)
         finally { c.TearDown(); }
     });
 
+    /// <summary>0.3.5 late block: the gate sends lock 0, nothing left, no Athan. The real page opens "I prayed" by
+    /// itself (no forced enable) and a plain click reaches the gate.</summary>
+    [Fact]
+    public void aLateBlockPageOpensPrayedAtOnce() => Ui.Run(async () =>
+    {
+        var spy = new SpyDelegate();
+        var c = Fixture.Controller();
+        c.Delegate = spy;
+        try
+        {
+            c.Show(Fixture.Ctx(prayer: Prayer.Isha, remainingMs: 0, athanMs: 0, lockSeconds: 0));
+            var slot = c.Slots[0];
+            Assert.True(await Ui.Until(4, () => slot.Ready));
+            var web = slot.Web!;
+            Assert.True(await Ui.UntilAsync(2, () => Fixture.BlockBuilt(web)));
+            Assert.True(await Ui.UntilAsync(4, async () => await Fixture.Text(web, "String(document.querySelector('.prayed')?.disabled)") == "false"));
+            await web.Js("(function(){ document.querySelector('.prayed').click(); return 'clicked'; })()");
+            Assert.True(await Ui.Until(2, () => spy.Confirms == 1));
+        }
+        finally { c.TearDown(); }
+    });
+
     [Fact]
     public void unknownMessagesAreDroppedAndNeverReachTheGate() => Ui.Run(async () =>
     {

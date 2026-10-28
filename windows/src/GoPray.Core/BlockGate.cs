@@ -83,6 +83,9 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
 
     public const int CrashLoopLaunches = 3;
     public const double CrashLoopWindow = 120;
+    /// <summary>0.3.5 (Ahmed, 2026-10-27): a block that starts more than this after its Athan (a wake, unlock or launch
+    /// long after the prayer came in) is a late block: no Athan, and "I prayed" is open at once (lock 0, persisted).</summary>
+    public static readonly TimeSpan LateStartLimit = TimeSpan.FromMinutes(30);
 
     // MARK: State
 
@@ -382,20 +385,23 @@ public sealed class BlockGate : IShieldDelegate, ISettingsChangeAuthorizing
             _leavingToken = null;
             _shield.TearDown();
         }
+        // The one choke point for every start (timer, wake, unlock, launch): too long after the Athan, nothing plays and
+        // the lock is already over. Persisted as lockSeconds 0, so a relaunch resumes it the same way (state.json v1 shape).
+        bool late = now - athanAt > LateStartLimit;
         State = State with
         {
             CurrentBlock = new BlockStateFile.Block
             {
-                Prayer = prayer, AthanAt = athanAt, BlockStartedAt = now, Silenced = false, AthanPlayed = true,
-                LockSeconds = lockSeconds,   // captured: later settings changes cannot touch it
+                Prayer = prayer, AthanAt = athanAt, BlockStartedAt = now, Silenced = false, AthanPlayed = !late,
+                LockSeconds = late ? 0 : lockSeconds,   // captured: later settings changes cannot touch it
                 HiddenApps = Capture(s),     // captured too (v2)
                 EmergencyExitsEnabled = s.EmergencyExitsEnabled,
             },
             Launches = [],
         };
         Persist();                        // on disk BEFORE the shield goes up
-        CoreLog.Notice($"block start {SwiftJson.Name(prayer)}");
-        Present(freshAthan: true);
+        CoreLog.Notice(late ? $"block late {SwiftJson.Name(prayer)}: no athan, prayed open" : $"block start {SwiftJson.Name(prayer)}");
+        Present(freshAthan: !late);
     }
 
     void Present(bool freshAthan)

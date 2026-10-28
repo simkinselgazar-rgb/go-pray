@@ -149,6 +149,9 @@ public class BlockGateTests
         h.Clock.Now = FakeSchedule.Sunrise().AddSeconds(-60);
         h.Gate.Reevaluate(ReevalReason.Wake);
         Assert.Equal(Prayer.Fajr, h.Gate.CurrentBlock?.Prayer);
+        // 0.3.5: 89 min after the Athan is a late block: no Athan, "I prayed" open at once (LateWakeTests).
+        Assert.Empty(h.Audio.Plays);
+        Assert.Equal(Phase.CanConfirm, h.Gate.Phase);
     }
 
     [Fact]
@@ -332,6 +335,9 @@ public class BlockGateTests
         Assert.Empty(h.CorruptFiles());
         Assert.Equal(Prayer.Dhuhr, h.Gate.CurrentBlock?.Prayer);
         Assert.Equal(at, h.Gate.CurrentBlock?.BlockStartedAt);
+        // 0.3.5: 3 h 29 min after Dhuhr's Athan is a late block: no Athan, "I prayed" open at once (LateWakeTests).
+        Assert.Empty(h.Audio.Plays);
+        Assert.Equal(Phase.CanConfirm, h.Gate.Phase);
     }
 
     /// <summary>Windows form of the Mac's 0600 check: no temp file left behind, and the file grants
