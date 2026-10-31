@@ -86,6 +86,25 @@ run "MRMediaRemoteGetNowPlayingInfo in MediaPauser" FAIL "echo 'let s = \"MRMedi
 run "second MRMediaRemoteSendCommand" FAIL "echo 'let s = \"MRMediaRemoteSendCommand\"' >> Audio/MediaPauser.swift"
 run "comment naming emergency.json (pos)" OK "echo '// the ledger writes emergency.json and calls recordUse(' >> UI/MenuView.swift"
 run "comment naming forceTerminate (pos)" OK "echo '// we never call forceTerminate() or kill(' >> Core/Stubs.swift"
+run "URLSession in SamsungTV (pos)" OK "echo 'let u = URLSession.shared' >> TV/SamsungTV.swift"
+run "URLSession in TVToken"        FAIL "echo 'let u = URLSession.shared' >> TV/TVToken.swift"
+run "planted IP literal in SamsungTV" FAIL "echo 'let h = \"192.168.1.5\"' >> TV/SamsungTV.swift"
+run "planted hostname in SamsungTV" FAIL "echo 'let h = \"wss://tv.example.com/api\"' >> TV/SamsungTV.swift"
+run "webSocketTask in SamsungTV (pos)" OK "echo 'func x(s: URLSession, u: URL) { _ = s.webSocketTask(with: u) }' >> TV/SamsungTV.swift"
+run "webSocketTask outside SamsungTV" FAIL "echo 'func x(s: Any) { _ = s.webSocketTask(with: u) }' >> TV/TVController.swift"
+run "SecItem outside TVToken"      FAIL "echo 'func x() { _ = SecItemCopyMatching(q, nil) }' >> Core/Stubs.swift"
+run "SecItem in TVToken (pos)"     OK   "echo 'func x() { _ = SecItemCopyMatching(q, nil) }' >> TV/TVToken.swift"
+run "serverTrust outside SamsungTV" FAIL "echo 'let t = challenge.protectionSpace.serverTrust' >> Core/Stubs.swift"
+run "useCredential outside SamsungTV" FAIL "echo 'func x() { completion(.useCredential, nil) }' >> Core/Stubs.swift"
+run "one useCredential in SamsungTV (pos)" OK "echo 'func x() { completion(.useCredential, nil) }' > TV/SamsungTV.swift"
+run "two useCredential in SamsungTV" FAIL "printf 'func x() { completion(.useCredential, nil) }\nfunc y() { completion(.useCredential, nil) }\n' > TV/SamsungTV.swift"
+run "athanStarted in startBlock"   FAIL "sed -i '' '/private func startBlock/a\\
+        tv.athanStarted(prayer: prayer, voice: s.voice, tvs: s.tvs)
+' Core/BlockGate.swift"
+run "athanStarted outside BlockGate" FAIL "echo 'func x(tv: TVControlling) { tv.athanStarted(prayer: .asr, voice: v, tvs: []) }' >> Core/Scheduler.swift"
+run "athanStarted twice in present" FAIL "sed -i '' '/private func present/a\\
+        tv.athanStarted(prayer: b.prayer, voice: s.voice, tvs: s.tvs)
+' Core/BlockGate.swift"
 rm -rf "$SP"
 echo "negative controls: $pass as expected, $failn wrong"
 [ $failn -eq 0 ]

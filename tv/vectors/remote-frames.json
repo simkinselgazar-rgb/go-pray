@@ -1,0 +1,210 @@
+{
+  "description": "Android TV Remote v2 frames: varint length + protobuf, made with androidtvremote2 (protobuf). direction send = we encode it and the bytes must match; receive = we decode it to the fields. secret_hex is bytes.",
+  "frames": [
+    {
+      "name": "pairing_request",
+      "family": "polo",
+      "direction": "send",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "pairing_request": {
+          "service_name": "atvremote",
+          "client_name": "Go Pray"
+        }
+      },
+      "frame_hex": "1b080210c80152140a0961747672656d6f74651207476f2050726179"
+    },
+    {
+      "name": "options",
+      "family": "polo",
+      "direction": "send",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "options": {
+          "input_encodings": [
+            {
+              "type": 3,
+              "symbol_length": 6
+            }
+          ],
+          "preferred_role": 1
+        }
+      },
+      "frame_hex": "10080210c801a201080a04080310061801"
+    },
+    {
+      "name": "configuration",
+      "family": "polo",
+      "direction": "send",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "configuration": {
+          "encoding": {
+            "type": 3,
+            "symbol_length": 6
+          },
+          "client_role": 1
+        }
+      },
+      "frame_hex": "10080210c801f201080a04080310061001"
+    },
+    {
+      "name": "secret",
+      "family": "polo",
+      "direction": "send",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "secret": {
+          "secret_hex": "3ee36aa6d15746f80b041709db878a61467a59a1cb35852e73f4750ca2bba10b"
+        }
+      },
+      "frame_hex": "2a080210c801c202220a203ee36aa6d15746f80b041709db878a61467a59a1cb35852e73f4750ca2bba10b"
+    },
+    {
+      "name": "pairing_request_ack",
+      "family": "polo",
+      "direction": "receive",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "pairing_request_ack": {}
+      },
+      "frame_hex": "07080210c8015a00"
+    },
+    {
+      "name": "configuration_ack",
+      "family": "polo",
+      "direction": "receive",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "configuration_ack": {}
+      },
+      "frame_hex": "08080210c801fa0100"
+    },
+    {
+      "name": "secret_ack",
+      "family": "polo",
+      "direction": "receive",
+      "fields": {
+        "protocol_version": 2,
+        "status": 200,
+        "secret_ack": {
+          "secret_hex": "0102"
+        }
+      },
+      "frame_hex": "0c080210c801ca02040a020102"
+    },
+    {
+      "name": "bad_secret_402",
+      "family": "polo",
+      "direction": "receive",
+      "fields": {
+        "protocol_version": 2,
+        "status": 402
+      },
+      "frame_hex": "050802109203"
+    },
+    {
+      "name": "remote_configure_reply",
+      "family": "remote",
+      "direction": "send",
+      "fields": {
+        "remote_configure": {
+          "code1": 35,
+          "device_info": {
+            "unknown1": 1,
+            "unknown2": "1",
+            "package_name": "atvremote",
+            "app_version": "1.0.0"
+          }
+        }
+      },
+      "frame_hex": "1d0a1b0823121718012201312a0961747672656d6f74653205312e302e30"
+    },
+    {
+      "name": "remote_set_active_reply",
+      "family": "remote",
+      "direction": "send",
+      "fields": {
+        "remote_set_active": {
+          "active": 35
+        }
+      },
+      "frame_hex": "0412020823"
+    },
+    {
+      "name": "remote_ping_response",
+      "family": "remote",
+      "direction": "send",
+      "fields": {
+        "remote_ping_response": {
+          "val1": 7
+        }
+      },
+      "frame_hex": "044a020807"
+    },
+    {
+      "name": "power_key",
+      "family": "remote",
+      "direction": "send",
+      "fields": {
+        "remote_key_inject": {
+          "key_code": 26,
+          "direction": 3
+        }
+      },
+      "frame_hex": "065204081a1003"
+    },
+    {
+      "name": "remote_ping_request",
+      "family": "remote",
+      "direction": "receive",
+      "fields": {
+        "remote_ping_request": {
+          "val1": 7
+        }
+      },
+      "frame_hex": "0442020807"
+    },
+    {
+      "name": "remote_start_true",
+      "family": "remote",
+      "direction": "receive",
+      "fields": {
+        "remote_start": {
+          "started": true
+        }
+      },
+      "frame_hex": "05c202020801"
+    },
+    {
+      "name": "remote_start_false",
+      "family": "remote",
+      "direction": "receive",
+      "fields": {
+        "remote_start": {}
+      },
+      "frame_hex": "03c20200"
+    },
+    {
+      "name": "remote_configure_from_tv",
+      "family": "remote",
+      "direction": "receive",
+      "fields": {
+        "remote_configure": {
+          "code1": 611,
+          "device_info": {
+            "model": "BRAVIA",
+            "vendor": "Sony"
+          }
+        }
+      },
+      "frame_hex": "150a1308e304120e0a064252415649411204536f6e79"
+    }
+  ]
+}

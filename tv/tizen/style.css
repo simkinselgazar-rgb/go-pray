@@ -1,0 +1,19 @@
+html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; }
+main { position: relative; width: 1920px; height: 1080px; overflow: hidden; background: #000; }
+#bg { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; object-fit: cover; }
+#label {
+  position: absolute; left: 18px; top: 640px; width: 770px; text-align: center;
+  font-family: sans-serif; font-size: 34px; line-height: 44px; letter-spacing: 0.5px;
+}
+/* label colours = Roku AthanScene.brs Palette */
+#label.fajr    { color: #F2E4CC; }
+#label.isha    { color: #EDE9E1; }
+#label.dhuhr   { color: #34444B; }
+#label.asr     { color: #5C4835; }
+#label.maghrib { color: #4B3719; }
+#debug {
+  position: absolute; left: 12px; bottom: 10px; max-width: 1400px;
+  font-family: monospace; font-size: 18px; line-height: 22px; color: #fff;
+  background: rgba(0, 0, 0, 0.55); padding: 2px 6px; word-break: break-all;
+}
+#debug:empty { display: none; }

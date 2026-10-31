@@ -3,7 +3,20 @@
 
 import Foundation
 
-enum TVKind: String, Codable, Sendable { case roku }
+enum TVKind: String, Codable, Sendable, CaseIterable {
+    case roku, samsung
+    /// Chromecast built-in (Google TV Plan). The raw value is shared with settings.json on Windows: do not rename.
+    case googleTV
+
+    /// What Settings calls it.
+    var label: String {
+        switch self { case .roku: "Roku"; case .samsung: "Samsung"; case .googleTV: "Google TV" }
+    }
+    /// The name a TV gets when the person leaves it blank.
+    var defaultName: String {
+        switch self { case .roku: "Roku TV"; case .samsung: "Samsung TV"; case .googleTV: "Google TV" }
+    }
+}
 
 struct TVDevice: Codable, Equatable, Identifiable, Sendable {
     var id: String
@@ -16,14 +29,25 @@ struct TVDevice: Codable, Equatable, Identifiable, Sendable {
     var enabled: Bool
     /// False once a check found no Go Pray app on the TV: shown in Settings, skipped at Athan time.
     var installed: Bool
+    /// Google TV only: the Android TV Remote pairing is done, so the Mac may turn the TV back off after the Athan.
+    /// The credential itself is a Keychain identity per Mac (TVToken.swift); this is only the Mac remembering it paired.
+    var remotePaired: Bool
 
     static let defaultChannelId = "dev"
+    /// The Samsung app id: the sideloaded wgt (`<tizen:application id>` is `GoPrayAth1.GoPray`).
+    static let defaultSamsungAppId = "GoPrayAth1.GoPray"
+    /// The Google TV app id: Google's stock Default Media Receiver. The only value a Google TV may carry.
+    static let defaultCastAppId = "CC1AD845"
+    static func defaultChannelId(for kind: TVKind) -> String {
+        switch kind { case .roku: defaultChannelId; case .samsung: defaultSamsungAppId; case .googleTV: defaultCastAppId }
+    }
     static let maxNameLength = 60, maxChannelIdLength = 32
 
     init(id: String = UUID().uuidString, name: String, kind: TVKind = .roku, host: String,
-         channelId: String = TVDevice.defaultChannelId, enabled: Bool = true, installed: Bool = true) {
+         channelId: String? = nil, enabled: Bool = true, installed: Bool = true, remotePaired: Bool = false) {
         self.id = id; self.name = name; self.kind = kind; self.host = host
-        self.channelId = channelId; self.enabled = enabled; self.installed = installed
+        self.channelId = channelId ?? TVDevice.defaultChannelId(for: kind); self.enabled = enabled; self.installed = installed
+        self.remotePaired = remotePaired
     }
 
     /// Tolerant like the other v2 keys: only `id`, `host` and `kind` are needed.
@@ -33,14 +57,18 @@ struct TVDevice: Codable, Equatable, Identifiable, Sendable {
         host = try c.decode(String.self, forKey: .host)
         kind = try c.decode(TVKind.self, forKey: .kind)
         name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        channelId = try c.decodeIfPresent(String.self, forKey: .channelId) ?? Self.defaultChannelId
+        channelId = try c.decodeIfPresent(String.self, forKey: .channelId) ?? Self.defaultChannelId(for: kind)
         enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         installed = try c.decodeIfPresent(Bool.self, forKey: .installed) ?? true
+        remotePaired = try c.decodeIfPresent(Bool.self, forKey: .remotePaired) ?? false
     }
 
-    /// `dev` (the sideloaded channel) or a published numeric id, nothing else. Never put anything else in a URL path.
-    static func isValidChannelId(_ s: String) -> Bool {
-        s.range(of: "^(dev|[0-9]{1,10})\\z", options: .regularExpression) != nil
+    /// Roku: `dev` (the sideloaded channel) or a published numeric id. Samsung and Google TV: an allow-list of exactly
+    /// one id, ours. Nothing else is ever put in a URL path or a Cast LAUNCH.
+    static func isValidChannelId(_ s: String, kind: TVKind = .roku) -> Bool {
+        if kind == .samsung { return s == defaultSamsungAppId }
+        if kind == .googleTV { return s == defaultCastAppId }
+        return s.range(of: "^(dev|[0-9]{1,10})\\z", options: .regularExpression) != nil
     }
 }
 
@@ -70,5 +98,8 @@ enum TVHost {
     }
 }
 
-/// A Roku found by a scan.
-struct FoundTV: Equatable, Sendable { var host: String; var name: String }
+/// A TV found by a scan: Rokus answer SSDP, Google TVs answer Bonjour. `kind` is what it is added as.
+struct FoundTV: Equatable, Sendable {
+    var host: String; var name: String; var kind: TVKind
+    init(host: String, name: String, kind: TVKind = .roku) { self.host = host; self.name = name; self.kind = kind }
+}

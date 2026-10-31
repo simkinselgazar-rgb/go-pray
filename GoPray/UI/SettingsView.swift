@@ -16,6 +16,7 @@ struct SettingsView: View {
     @State private var lockDraft: Double?
     @State private var volumeDraft: Double?
     @State private var tvAddress = ""
+    @State private var tvKind: TVKind = .roku
 
     private var s: Settings { model.settings }
 
@@ -30,7 +31,7 @@ struct SettingsView: View {
                 locationSection
                 timesSection
                 blockSection
-                blockedAppsSection
+                if s.mode != .tvOnly { blockedAppsSection }
                 pauseSection
                 athanSection
                 tvsSection
@@ -110,28 +111,30 @@ struct SettingsView: View {
     private var blockSection: some View {
         Section("Block") {
             Picker("Mode", selection: model.binding(\.mode).binding) {
-                ForEach([BlockMode.wholeScreen, .codingApps], id: \.rawValue) { Text($0.displayName).tag($0) }
+                ForEach([BlockMode.wholeScreen, .codingApps, .tvOnly], id: \.rawValue) { Text($0.displayName).tag($0) }
             }
             .pickerStyle(.segmented)
             help(s.mode.help)
 
-            LabeledContent("Break length") {
-                HStack {
-                    Slider(value: Binding(get: { lockDraft ?? Double(s.lockMinutes) }, set: { lockDraft = $0 }),
-                           in: Double(LockPolicy.minMinutes)...Double(LockPolicy.maxMinutes), step: 1) { editing in
-                        if !editing, let v = lockDraft { model.set(\.lockMinutes, to: Int(v)); lockDraft = nil }
+            if s.mode != .tvOnly {
+                LabeledContent("Break length") {
+                    HStack {
+                        Slider(value: Binding(get: { lockDraft ?? Double(s.lockMinutes) }, set: { lockDraft = $0 }),
+                               in: Double(LockPolicy.minMinutes)...Double(LockPolicy.maxMinutes), step: 1) { editing in
+                            if !editing, let v = lockDraft { model.set(\.lockMinutes, to: Int(v)); lockDraft = nil }
+                        }
+                        .frame(width: 180)
+                        .accessibilityLabel("Break length")
+                        Text("\(Int(lockDraft ?? Double(s.lockMinutes))) min")
+                            .monospacedDigit().frame(width: 52, alignment: .trailing)
                     }
-                    .frame(width: 180)
-                    .accessibilityLabel("Break length")
-                    Text("\(Int(lockDraft ?? Double(s.lockMinutes))) min")
-                        .monospacedDigit().frame(width: 52, alignment: .trailing)
                 }
-            }
-            help("How long the screen rests after each Athan. Never under \(LockPolicy.minMinutes) minutes. A new length starts at the next prayer.")
+                help("How long the screen rests after each Athan. Never under \(LockPolicy.minMinutes) minutes. A new length starts at the next prayer.")
 
-            Toggle("Allow emergency exits", isOn: model.binding(\.emergencyExitsEnabled).binding)
-            help("Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.")
-            Text(s.emergencyExitsEnabled ? model.exitsLine : EmergencyExitPolicy.offLine).font(.callout).foregroundStyle(.secondary)
+                Toggle("Allow emergency exits", isOn: model.binding(\.emergencyExitsEnabled).binding)
+                help("Up to 5 a year, for the days you truly can't stop. Off means no exit button at all. Changes start at the next prayer.")
+                Text(s.emergencyExitsEnabled ? model.exitsLine : EmergencyExitPolicy.offLine).font(.callout).foregroundStyle(.secondary)
+            }
         }
     }
 
@@ -230,7 +233,7 @@ struct SettingsView: View {
 
     private var tvsSection: some View {
         Section("TVs") {
-            help("The Athan starts on your TV too. Your TV needs the Go Pray Roku app.")
+            help("The Athan starts on your TV too. Roku and Samsung TVs need the Go Pray app. Google TV needs nothing installed.")
             ForEach(model.tvs) { tv in
                 TVRow(tv: tv, model: model)
             }
@@ -249,21 +252,28 @@ struct SettingsView: View {
                 }
             }
             if model.scanNeedsNetworkAccess { help(SettingsViewModel.allowLocalNetworkLine) }
-            else if model.scanState == .done, model.foundTVs.isEmpty { help("No new Roku TVs found. You can add one by its address.") }
+            else if model.scanState == .done, model.foundTVs.isEmpty { help("No new TVs found. You can add one by its address.") }
             LabeledContent("Add by address") {
-                HStack {
-                    TextField("192.168.1.20", text: $tvAddress)
-                        .textFieldStyle(.roundedBorder).frame(width: 140).disableAutocorrection(true)
+                HStack(spacing: Spacing.s8) {
+                    Picker("TV type", selection: $tvKind) {
+                        ForEach(TVKind.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .labelsHidden().pickerStyle(.menu).fixedSize()
+                    // In a grouped Form a TextField's title is drawn as a side label: hide it, the address is the prompt.
+                    TextField("TV address", text: $tvAddress, prompt: Text("192.168.1.20"))
+                        .labelsHidden().textFieldStyle(.roundedBorder).frame(minWidth: 130, maxWidth: 150)
+                        .disableAutocorrection(true)
                         .onSubmit { addTypedTV() }
                     Button("Add") { addTypedTV() }.disabled(tvAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+                        .fixedSize()
                 }
             }
         }
     }
 
     private func addTypedTV() {
-        let host = tvAddress
-        Task { if await model.addTyped(host) { tvAddress = "" } }
+        let host = tvAddress, kind = tvKind
+        Task { if await model.addTyped(host, kind: kind) { tvAddress = "" } }
     }
 
     // MARK: General
@@ -300,6 +310,7 @@ private struct TVRow: View {
     let tv: TVDevice
     @Bindable var model: SettingsViewModel
     @State private var name = ""
+    @State private var codeSheet = false
     @FocusState private var focused: Bool
 
     var body: some View {
@@ -316,24 +327,85 @@ private struct TVRow: View {
             }
             if model.tvsNeedingNetworkAccess.contains(tv.id) { Text(SettingsViewModel.allowLocalNetworkLine).font(.callout).foregroundStyle(.secondary) }
             else if !tv.installed { Text(SettingsViewModel.notInstalledLine).font(.callout).foregroundStyle(.secondary) }
+            if tv.kind == .samsung { Text(Self.tokenLine(model.tokenState(of: tv.id))).font(.callout).foregroundStyle(.secondary) }
+            if tv.kind == .googleTV { Text(model.remoteHelp(for: tv)).font(.callout).foregroundStyle(.secondary) }
             HStack {
                 Text(tv.host).font(.system(size: 11, design: .monospaced)).foregroundStyle(.secondary)
                 Spacer()
                 if let line = model.tvTestLines[tv.id] {
                     Text(line).font(.callout).foregroundStyle(.secondary)
                 }
+                if tv.kind == .samsung {
+                    Button(model.pairingTV == tv.id ? "Pairing…" : (model.tokenState(of: tv.id) == .paired ? "Pair again" : "Pair")) { Task { await model.pairTV(tv.id) } }
+                        .disabled(model.pairingTV != nil || model.testingTV != nil)
+                }
+                if tv.kind == .googleTV {
+                    Button(model.remotePairingTV == tv.id ? "Pairing…" : (tv.remotePaired ? "Pair again" : "Pair remote")) { Task { if await model.startRemotePairing(tv.id) { codeSheet = true } } }
+                        .disabled(model.remotePairingTV != nil || model.testingTV != nil)
+                }
                 Button(model.testingTV == tv.id ? "Sending…" : "Test") { Task { await model.testTV(tv.id) } }
-                    .disabled(model.testingTV != nil)
+                    .disabled(model.testingTV != nil || model.pairingTV != nil || model.remotePairingTV != nil)
             }
         }
-        .onAppear { name = tv.name }
+        .sheet(isPresented: $codeSheet) { RemoteCodeSheet(tv: tv, model: model, isPresented: $codeSheet) }
+        .onAppear { name = tv.name; model.loadTokenState(tv.id) }
         .onChange(of: tv.name) { _, new in if !focused { name = new } }
         .onChange(of: focused) { _, now in if !now { commit() } }
+    }
+
+    private static func tokenLine(_ state: SettingsViewModel.TokenState) -> String {
+        switch state {
+        case .paired: return "Paired"
+        case .notPaired: return "Not paired yet. Press Pair so the TV picks the right voice."
+        case .basicLaunchOnly: return SettingsViewModel.basicLaunchLine
+        case .pairAgain: return SettingsViewModel.pairAgainLine
+        }
     }
 
     private func commit() {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         if trimmed.isEmpty { name = tv.name } else if trimmed != tv.name { model.renameTV(tv.id, to: trimmed) }
+    }
+}
+
+/// Google TV: "Look at the TV and type the 6 characters it shows". One field, Pair / Cancel.
+struct RemoteCodeSheet: View {
+    let tv: TVDevice
+    @Bindable var model: SettingsViewModel
+    @Binding var isPresented: Bool
+    @State private var code = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.s12) {
+            Text("Pair remote").font(.headline)
+            Text("Type the code shown on your TV.").font(.callout).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            TextField("ABC123", text: $code)
+                .textFieldStyle(.roundedBorder).font(.system(.body, design: .monospaced)).frame(width: 140)
+                .disableAutocorrection(true)
+                .onChange(of: code) { _, new in
+                    let t = String(new.uppercased().filter { $0.isASCII && $0.isHexDigit }.prefix(6))
+                    if t != new { code = t }
+                }
+                .onSubmit { pair() }
+                .accessibilityLabel("Code shown on \(tv.name)")
+            if let line = model.tvTestLines[tv.id] {
+                Text(line).font(.callout).foregroundStyle(.secondary)
+            }
+            HStack {
+                Spacer()
+                Button("Cancel") { isPresented = false }.keyboardShortcut(.cancelAction)
+                Button(model.remotePairingTV == tv.id ? "Pairing…" : "Pair") { pair() }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(code.count != 6 || model.remotePairingTV != nil)
+            }
+        }
+        .padding(Spacing.s16).frame(width: 340)
+    }
+
+    private func pair() {
+        let c = code
+        Task { if await model.pairRemote(tv.id, code: c) != .tryAgain { isPresented = false } else { code = "" } }
     }
 }
 

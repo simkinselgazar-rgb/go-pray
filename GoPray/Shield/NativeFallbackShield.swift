@@ -19,7 +19,7 @@ struct ShieldPalette {
         case .fajr: return .init(ground: hex(0x0e0705), text: hex(0xf2e4cc))
         case .dhuhr: return .init(ground: hex(0xf0eee7), text: hex(0x17232a))
         case .asr: return .init(ground: hex(0xf1ece4), text: hex(0x2d1c0e))
-        case .maghrib: return .init(ground: hex(0xf8de9c), text: hex(0x241c0d))
+        case .maghrib: return .init(ground: hex(0xf1d9bd), text: hex(0x241c0d))
         case .isha: return .init(ground: hex(0x08080f), text: hex(0xede9e1))
         }
     }

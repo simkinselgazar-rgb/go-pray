@@ -1,0 +1,1 @@
+JSON test vectors shared by the Mac (XCTest/Testing) and Windows (xUnit) codecs: a hex frame plus its expected fields. Lane A writes the CASTV2 vectors, lane D the Remote v2 and pairing-secret vectors (Google TV Plan §10).

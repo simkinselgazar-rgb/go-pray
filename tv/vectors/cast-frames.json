@@ -1,0 +1,149 @@
+{
+  "description": "CASTV2 frames: 4-byte big-endian length + CastMessage protobuf (fields 1 protocol_version, 2 source_id, 3 destination_id, 4 namespace, 5 payload_type, 6 payload_utf8). JSON payloads are compact with sorted keys. connect-receiver is the vector pinned in Google TV Plan section 3. Built with an independent Python encoder, not the Swift one. Used by CastTVTests (XCTest side) and the Windows xUnit side.",
+  "cases": [
+    {
+      "name": "connect-receiver",
+      "frameHex": "000000580800120873656e6465722d301a0a72656365697665722d30222875726e3a782d636173743a636f6d2e676f6f676c652e636173742e74702e636f6e6e656374696f6e280032127b2274797065223a22434f4e4e454354227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.tp.connection",
+        "payload_type": 0,
+        "payload_utf8": "{\"type\":\"CONNECT\"}"
+      }
+    },
+    {
+      "name": "connect-transport",
+      "frameHex": "000000530800120873656e6465722d301a057765622d37222875726e3a782d636173743a636f6d2e676f6f676c652e636173742e74702e636f6e6e656374696f6e280032127b2274797065223a22434f4e4e454354227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "web-7",
+        "namespace": "urn:x-cast:com.google.cast.tp.connection",
+        "payload_type": 0,
+        "payload_utf8": "{\"type\":\"CONNECT\"}"
+      }
+    },
+    {
+      "name": "get-status",
+      "frameHex": "000000640800120873656e6465722d301a0a72656365697665722d30222375726e3a782d636173743a636f6d2e676f6f676c652e636173742e7265636569766572280032237b22726571756573744964223a312c2274797065223a224745545f535441545553227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.receiver",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":1,\"type\":\"GET_STATUS\"}"
+      }
+    },
+    {
+      "name": "launch",
+      "frameHex": "000000730800120873656e6465722d301a0a72656365697665722d30222375726e3a782d636173743a636f6d2e676f6f676c652e636173742e7265636569766572280032327b226170704964223a224343314144383435222c22726571756573744964223a332c2274797065223a224c41554e4348227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.receiver",
+        "payload_type": 0,
+        "payload_utf8": "{\"appId\":\"CC1AD845\",\"requestId\":3,\"type\":\"LAUNCH\"}"
+      }
+    },
+    {
+      "name": "stop",
+      "frameHex": "000000750800120873656e6465722d301a0a72656365697665722d30222375726e3a782d636173743a636f6d2e676f6f676c652e636173742e7265636569766572280032347b22726571756573744964223a322c2273657373696f6e4964223a22736573732d6e6577222c2274797065223a2253544f50227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.receiver",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":2,\"sessionId\":\"sess-new\",\"type\":\"STOP\"}"
+      }
+    },
+    {
+      "name": "load",
+      "frameHex": "000001290800120873656e6465722d301a057765622d37222075726e3a782d636173743a636f6d2e676f6f676c652e636173742e6d65646961280032ef017b226175746f706c6179223a747275652c226d65646961223a7b22636f6e74656e744964223a22687474703a2f2f31302e302e302e353a35313233342f612f30313233343536373839616263646566303132333435363738396162636465662e6d7034222c22636f6e74656e7454797065223a22766964656f2f6d7034222c226d65746164617461223a7b226d6574616461746154797065223a302c227469746c65223a22476f205072617920c2b7204d616768726962227d2c2273747265616d54797065223a224255464645524544227d2c22726571756573744964223a342c2274797065223a224c4f4144227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "web-7",
+        "namespace": "urn:x-cast:com.google.cast.media",
+        "payload_type": 0,
+        "payload_utf8": "{\"autoplay\":true,\"media\":{\"contentId\":\"http://10.0.0.5:51234/a/0123456789abcdef0123456789abcdef.mp4\",\"contentType\":\"video/mp4\",\"metadata\":{\"metadataType\":0,\"title\":\"Go Pray · Maghrib\"},\"streamType\":\"BUFFERED\"},\"requestId\":4,\"type\":\"LOAD\"}"
+      }
+    },
+    {
+      "name": "media-get-status",
+      "frameHex": "0000005c0800120873656e6465722d301a057765622d37222075726e3a782d636173743a636f6d2e676f6f676c652e636173742e6d65646961280032237b22726571756573744964223a352c2274797065223a224745545f535441545553227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "web-7",
+        "namespace": "urn:x-cast:com.google.cast.media",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":5,\"type\":\"GET_STATUS\"}"
+      }
+    },
+    {
+      "name": "ping",
+      "frameHex": "000000540800120873656e6465722d301a0a72656365697665722d30222775726e3a782d636173743a636f6d2e676f6f676c652e636173742e74702e6865617274626561742800320f7b2274797065223a2250494e47227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.tp.heartbeat",
+        "payload_type": 0,
+        "payload_utf8": "{\"type\":\"PING\"}"
+      }
+    },
+    {
+      "name": "pong",
+      "frameHex": "000000540800120873656e6465722d301a0a72656365697665722d30222775726e3a782d636173743a636f6d2e676f6f676c652e636173742e74702e6865617274626561742800320f7b2274797065223a22504f4e47227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "sender-0",
+        "destination_id": "receiver-0",
+        "namespace": "urn:x-cast:com.google.cast.tp.heartbeat",
+        "payload_type": 0,
+        "payload_utf8": "{\"type\":\"PONG\"}"
+      }
+    },
+    {
+      "name": "receiver-status-standby",
+      "frameHex": "0000009b0800120a72656365697665722d301a0873656e6465722d30222375726e3a782d636173743a636f6d2e676f6f676c652e636173742e72656365697665722800325a7b22726571756573744964223a312c22737461747573223a7b226973416374697665496e707574223a66616c73652c2269735374616e644279223a747275657d2c2274797065223a2252454345495645525f535441545553227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "receiver-0",
+        "destination_id": "sender-0",
+        "namespace": "urn:x-cast:com.google.cast.receiver",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":1,\"status\":{\"isActiveInput\":false,\"isStandBy\":true},\"type\":\"RECEIVER_STATUS\"}"
+      }
+    },
+    {
+      "name": "receiver-status-running",
+      "frameHex": "0000011a0800120a72656365697665722d301a0873656e6465722d30222375726e3a782d636173743a636f6d2e676f6f676c652e636173742e7265636569766572280032d8017b22726571756573744964223a312c22737461747573223a7b226170706c69636174696f6e73223a5b7b226170704964223a224343314144383435222c2273657373696f6e4964223a22736573732d6e6577222c2273746174757354657874223a2243617374696e673a20476f205072617920c2b7204d616768726962222c227472616e73706f72744964223a227765622d37227d5d2c226973416374697665496e707574223a747275652c2269735374616e644279223a66616c73657d2c2274797065223a2252454345495645525f535441545553227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "receiver-0",
+        "destination_id": "sender-0",
+        "namespace": "urn:x-cast:com.google.cast.receiver",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":1,\"status\":{\"applications\":[{\"appId\":\"CC1AD845\",\"sessionId\":\"sess-new\",\"statusText\":\"Casting: Go Pray · Maghrib\",\"transportId\":\"web-7\"}],\"isActiveInput\":true,\"isStandBy\":false},\"type\":\"RECEIVER_STATUS\"}"
+      }
+    },
+    {
+      "name": "media-status-finished",
+      "frameHex": "000000c0080012057765622d371a0873656e6465722d30222075726e3a782d636173743a636f6d2e676f6f676c652e636173742e6d6564696128003286017b22726571756573744964223a302c22737461747573223a5b7b2263757272656e7454696d65223a3237352e302c2269646c65526561736f6e223a2246494e4953484544222c226d6564696153657373696f6e4964223a312c22706c617965725374617465223a2249444c45227d5d2c2274797065223a224d454449415f535441545553227d",
+      "message": {
+        "protocol_version": 0,
+        "source_id": "web-7",
+        "destination_id": "sender-0",
+        "namespace": "urn:x-cast:com.google.cast.media",
+        "payload_type": 0,
+        "payload_utf8": "{\"requestId\":0,\"status\":[{\"currentTime\":275.0,\"idleReason\":\"FINISHED\",\"mediaSessionId\":1,\"playerState\":\"IDLE\"}],\"type\":\"MEDIA_STATUS\"}"
+      }
+    }
+  ]
+}

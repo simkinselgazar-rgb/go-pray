@@ -52,7 +52,7 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
         settingsStore.attach(gate)                 // fail closed until this line: the store refuses everything
         let scheduler = Scheduler(clock: clock, schedule: schedule, gate: gate, settings: { settingsStore.settings })
         self.scheduler = scheduler
-        settingsStore.onChange = { _ in scheduler.handle(.settingsChanged) }
+        settingsStore.onChange = { s in scheduler.handle(.settingsChanged); tv.settingsChanged(s) }   // Google TV warm-up
     }
 
     /// True once the live wiring ran in this process. Tests assert it stays false.
@@ -76,12 +76,13 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "wire")
                               geocoder: Geocoder(),
                               ledger: EmergencyLedger(),
                               defaultApps: hidden,
-                              tv: TVController(), tvDiscovery: RokuDiscovery())
+                              tv: TVController(), tvDiscovery: AllTVDiscovery())
     }
 
     func start() {
         gate.reevaluate(.launch)      // resume / wake rule / fail-open checks
         scheduler.start()
+        tv.settingsChanged(settingsStore.settings)      // a Google TV already on the list warms its videos (cached: cheap)
         let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.0.0"
         let updater = UpdateChecker(currentVersion: version, isBlocked: { [gate] in gate.isBlocked },
                                     automatic: { [settingsStore] in settingsStore.settings.checkForUpdates }, clock: clock)

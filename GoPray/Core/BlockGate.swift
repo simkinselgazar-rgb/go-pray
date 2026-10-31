@@ -363,20 +363,29 @@ import os
 
     private func present(freshAthan: Bool) {
         let s = settings()
-        presented = true
-        if s.mode == .codingApps { hider.start(hiding: capturedApps()) }
-        if freshAthan, let b = state.block, !b.silenced {
-            do { try audio.play(prayer: b.prayer, voice: s.voice, volume: s.athanVolume) }
-            catch { log.error("athan play failed: \(error.localizedDescription, privacy: .public)") }
-            // The household's Athan too: only here, so only when the Mac's Athan fires (live, or wake into an
-            // open window). Not on a relaunch (freshAthan false), not silenced, not paused (no block starts).
-            // Several computers can share one Wi-Fi: only the Athan itself starts the TV. Waking into an open window
-            // more than 3 min after the real prayer time still blocks the Mac, but leaves the TV alone.
+        let fresh = freshAthan && state.block.map { !$0.silenced } == true
+        // The household's Athan too: only here, so only when the Mac's Athan fires (live, or wake into an
+        // open window). Not on a relaunch (freshAthan false), not silenced, not paused (no block starts).
+        // Several computers can share one Wi-Fi: only the Athan itself starts the TV. Waking into an open window
+        // more than 3 min after the real prayer time still blocks the Mac, but leaves the TV alone.
+        if fresh, let b = state.block {
             if clock.now.timeIntervalSince(b.athanAt) <= Self.tvLateWakeLimit {
                 tv.athanStarted(prayer: b.prayer, voice: s.voice, tvs: s.tvs)
             } else {
                 log.notice("tv: skipped, late wake")
             }
+        }
+        if s.mode == .tvOnly, let b = state.block {      // TV only: the TVs got it; the Mac is done, silent, never locked
+            state.lastConfirmed = .init(prayer: b.prayer, athanAt: b.athanAt)   // counts as prayed: no wake re-fire, no lock
+            state.block = nil; state.launches = []; persist()
+            log.notice("tv only: \(b.prayer.rawValue, privacy: .public) handed to the TVs")
+            return
+        }
+        presented = true
+        if s.mode == .codingApps { hider.start(hiding: capturedApps()) }
+        if fresh, let b = state.block {      // the Mac's own Athan sound: the one line that decides whether TV only is silent
+            do { try audio.play(prayer: b.prayer, voice: s.voice, volume: s.athanVolume) }
+            catch { log.error("athan play failed: \(error.localizedDescription, privacy: .public)") }
         }
         shield.show(shieldContext()!)
     }

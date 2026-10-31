@@ -30,7 +30,7 @@ struct PrayerTokens {
         case .fajr: return .init(ground: Color(hex: 0x0E0705), text: Color(hex: 0xF2E4CC), accent: Color(hex: 0xF5D4A0))
         case .dhuhr: return .init(ground: Color(hex: 0xF0EEE7), text: Color(hex: 0x17232A), accent: Color(hex: 0x2E4D60))
         case .asr: return .init(ground: Color(hex: 0xF1ECE4), text: Color(hex: 0x2D1C0E), accent: Color(hex: 0x7A5C22))
-        case .maghrib: return .init(ground: Color(hex: 0xF8DE9C), text: Color(hex: 0x241C0D), accent: Color(hex: 0x5C3A12))
+        case .maghrib: return .init(ground: Color(hex: 0xF1D9BD), text: Color(hex: 0x241C0D), accent: Color(hex: 0x5C3A12))
         case .isha: return .init(ground: Color(hex: 0x08080F), text: Color(hex: 0xEDE9E1), accent: Color(hex: 0x62A38E))
         }
     }

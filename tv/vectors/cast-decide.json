@@ -1,0 +1,340 @@
+{
+  "description": "Pure decisions over parsed Cast status (CastDecide, CastProgress). Same fixtures on Mac and Windows. media = [playerState, idleReason|null, currentTime].",
+  "live": [
+    {
+      "name": "playing and advancing",
+      "first": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "second": [
+        "PLAYING",
+        null,
+        12.0
+      ],
+      "expect": true
+    },
+    {
+      "name": "advanced exactly one second",
+      "first": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "second": [
+        "PLAYING",
+        null,
+        11.0
+      ],
+      "expect": true
+    },
+    {
+      "name": "advanced under a second",
+      "first": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "second": [
+        "PLAYING",
+        null,
+        10.5
+      ],
+      "expect": false
+    },
+    {
+      "name": "playing but frozen",
+      "first": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "second": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "expect": false
+    },
+    {
+      "name": "buffering frozen (hidden receiver after Back)",
+      "first": [
+        "BUFFERING",
+        null,
+        0.0
+      ],
+      "second": [
+        "BUFFERING",
+        null,
+        0.0
+      ],
+      "expect": false
+    },
+    {
+      "name": "paused",
+      "first": [
+        "PAUSED",
+        null,
+        10.0
+      ],
+      "second": [
+        "PAUSED",
+        null,
+        10.0
+      ],
+      "expect": false
+    },
+    {
+      "name": "idle",
+      "first": [
+        "IDLE",
+        "FINISHED",
+        0.0
+      ],
+      "second": [
+        "IDLE",
+        "FINISHED",
+        0.0
+      ],
+      "expect": false
+    },
+    {
+      "name": "first sample missing",
+      "first": null,
+      "second": [
+        "PLAYING",
+        null,
+        12.0
+      ],
+      "expect": false
+    },
+    {
+      "name": "second sample missing",
+      "first": [
+        "PLAYING",
+        null,
+        10.0
+      ],
+      "second": null,
+      "expect": false
+    }
+  ],
+  "end": [
+    {
+      "name": "finished",
+      "media": [
+        "IDLE",
+        "FINISHED",
+        0.0
+      ],
+      "expect": "finished"
+    },
+    {
+      "name": "cancelled (Back)",
+      "media": [
+        "IDLE",
+        "CANCELLED",
+        0.0
+      ],
+      "expect": "early"
+    },
+    {
+      "name": "interrupted",
+      "media": [
+        "IDLE",
+        "INTERRUPTED",
+        0.0
+      ],
+      "expect": "early"
+    },
+    {
+      "name": "error",
+      "media": [
+        "IDLE",
+        "ERROR",
+        0.0
+      ],
+      "expect": "early"
+    },
+    {
+      "name": "idle with no reason says nothing",
+      "media": [
+        "IDLE",
+        null,
+        0.0
+      ],
+      "expect": null
+    },
+    {
+      "name": "playing",
+      "media": [
+        "PLAYING",
+        null,
+        5.0
+      ],
+      "expect": null
+    },
+    {
+      "name": "buffering",
+      "media": [
+        "BUFFERING",
+        null,
+        0.0
+      ],
+      "expect": null
+    }
+  ],
+  "progress": [
+    {
+      "name": "plays steadily",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          1.0,
+          "BUFFERING",
+          null,
+          0.0
+        ],
+        [
+          3.0,
+          "PLAYING",
+          null,
+          1.0
+        ],
+        [
+          8.0,
+          "PLAYING",
+          null,
+          6.0
+        ],
+        [
+          13.0,
+          "PLAYING",
+          null,
+          11.0
+        ]
+      ],
+      "at": 20.0,
+      "expectStalled": false
+    },
+    {
+      "name": "buffering frozen from the start",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          5.0,
+          "BUFFERING",
+          null,
+          0.0
+        ],
+        [
+          10.0,
+          "BUFFERING",
+          null,
+          0.0
+        ]
+      ],
+      "at": 15.0,
+      "expectStalled": true
+    },
+    {
+      "name": "not yet at the limit",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          5.0,
+          "BUFFERING",
+          null,
+          0.0
+        ]
+      ],
+      "at": 14.9,
+      "expectStalled": false
+    },
+    {
+      "name": "playing then clock freezes",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          2.0,
+          "PLAYING",
+          null,
+          1.0
+        ],
+        [
+          7.0,
+          "PLAYING",
+          null,
+          6.0
+        ],
+        [
+          12.0,
+          "PLAYING",
+          null,
+          6.0
+        ],
+        [
+          17.0,
+          "PLAYING",
+          null,
+          6.0
+        ]
+      ],
+      "at": 22.0,
+      "expectStalled": true
+    },
+    {
+      "name": "playing then paused",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          2.0,
+          "PLAYING",
+          null,
+          1.0
+        ],
+        [
+          7.0,
+          "PAUSED",
+          null,
+          6.0
+        ]
+      ],
+      "at": 17.0,
+      "expectStalled": true
+    },
+    {
+      "name": "resumes before the limit",
+      "startedAt": 0.0,
+      "limit": 15.0,
+      "observations": [
+        [
+          2.0,
+          "PLAYING",
+          null,
+          1.0
+        ],
+        [
+          10.0,
+          "BUFFERING",
+          null,
+          5.0
+        ],
+        [
+          14.0,
+          "PLAYING",
+          null,
+          7.0
+        ]
+      ],
+      "at": 28.0,
+      "expectStalled": false
+    }
+  ]
+}

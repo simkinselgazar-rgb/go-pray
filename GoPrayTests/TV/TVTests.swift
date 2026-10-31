@@ -422,7 +422,7 @@ private func appsXML(_ apps: (String, String)...) -> String {
     }
 
     @Test func oneBadEntryOrBadKeyNeverBreaksTheFile() throws {
-        let mixed = try JSONDecoder().decode(Settings.self, from: settingsJSON(tvs: #"[{"id":"a","kind":"samsung","host":"10.0.0.2"},{"id":"b","kind":"roku","host":"10.0.0.3"},42]"#))
+        let mixed = try JSONDecoder().decode(Settings.self, from: settingsJSON(tvs: #"[{"id":"a","kind":"hisense","host":"10.0.0.2"},{"id":"b","kind":"roku","host":"10.0.0.3"},42]"#))
         #expect(mixed.tvs.map(\.id) == ["b"])
         let junk = try JSONDecoder().decode(Settings.self, from: settingsJSON(tvs: #""nope""#))
         #expect(junk.tvs.isEmpty)
@@ -453,9 +453,17 @@ private func appsXML(_ apps: (String, String)...) -> String {
 @MainActor @Suite("TV and the gate") struct TVGateTests {
     private let asr = FakeSchedule.at(.asr)
     private let lounge = TVDevice(id: "a", name: "Lounge", host: "192.168.1.160")
+    private let den = TVDevice(id: "b", name: "Den", kind: .samsung, host: "192.168.1.161")
+    private let cast = TVDevice(id: "c", name: "Family Room TV", kind: .googleTV, host: "192.168.1.162")
+
+    private func tvOnlyHarness(tvs: [TVDevice]? = nil, paused: Bool = false) -> Harness {
+        var s = paused ? Settings.test(pausedUntil: .distantFuture) : Settings.test()
+        s.tvs = tvs ?? [lounge, den, cast]; s.mode = .tvOnly
+        return Harness(at: asr.addingTimeInterval(-60), settings: s)
+    }
 
     private func harness(tvs: [TVDevice]? = nil, at: Date? = nil) -> Harness {
-        var s = Settings.test(); s.tvs = tvs ?? [lounge]
+        var s = Settings.test(); s.tvs = tvs ?? [lounge, den]
         return Harness(at: at ?? asr.addingTimeInterval(-60), settings: s)
     }
 
@@ -464,7 +472,7 @@ private func appsXML(_ apps: (String, String)...) -> String {
         h.clock.now = asr
         h.gate.athanFired(.asr, at: asr)
         #expect(h.audio.plays.count == 1)
-        #expect(h.tv.calls == [.init(prayer: .asr, voice: .sunni("test-voice"), tvs: [lounge])])
+        #expect(h.tv.calls == [.init(prayer: .asr, voice: .sunni("test-voice"), tvs: [lounge, den])])
         h.gate.athanFired(.asr, at: asr)                       // the scheduler firing again: no second block, no second call
         #expect(h.tv.calls.count == 1)
     }
@@ -487,6 +495,107 @@ private func appsXML(_ apps: (String, String)...) -> String {
             #expect(h.gate.isBlocked && h.audio.plays.count == 1, "the Mac block starts as today")
             #expect(h.tv.calls.isEmpty, "+\(secs)s")
         }
+    }
+
+    @Test func googleTVIsLeftAloneByALateWakeLikeTheOthers() {
+        for secs: TimeInterval in [181, 600, 20 * 60] {
+            let h = harness(tvs: [cast]); defer { h.cleanup() }
+            h.clock.now = asr.addingTimeInterval(secs)
+            h.gate.reevaluate(.wake)
+            #expect(h.gate.isBlocked && h.tv.calls.isEmpty, "+\(secs)s")
+        }
+        let h = harness(tvs: [cast]); defer { h.cleanup() }
+        h.clock.now = asr.addingTimeInterval(120)
+        h.gate.reevaluate(.wake)
+        #expect(h.tv.calls == [.init(prayer: .asr, voice: .sunni("test-voice"), tvs: [cast])])
+    }
+
+    // MARK: TV only mode
+
+    @Test func tvOnlyHandsTheAthanToTheTVsAndNothingElse() throws {
+        let h = tvOnlyHarness(); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.tv.calls == [.init(prayer: .asr, voice: .sunni("test-voice"), tvs: [lounge, den, cast])], "TVs called once")
+        #expect(h.shield.shows.isEmpty, "no shield")
+        #expect(h.hider.startCount == 0, "no hider")
+        #expect(h.audio.plays.isEmpty, "the Mac stays silent")
+        #expect(!h.gate.isBlocked)
+        let disk = try h.diskState()
+        #expect(disk.block == nil)
+        #expect(disk.lastConfirmed?.prayer == .asr && disk.lastConfirmed?.athanAt == asr)
+    }
+
+    @Test func tvOnlyIsDoneSoAWakeTwoMinutesLaterDoesNotRestartTheTV() {
+        let h = tvOnlyHarness(); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        h.clock.now = asr.addingTimeInterval(120)
+        h.gate.reevaluate(.wake)
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.tv.calls.count == 1 && h.shield.shows.isEmpty && h.audio.plays.isEmpty && !h.gate.isBlocked)
+    }
+
+    @Test func tvOnlyStillHonoursTheThreeMinuteRule() {
+        let h = tvOnlyHarness(); defer { h.cleanup() }
+        h.clock.now = asr.addingTimeInterval(181)
+        h.gate.reevaluate(.wake)
+        #expect(h.tv.calls.isEmpty && h.shield.shows.isEmpty && h.audio.plays.isEmpty && !h.gate.isBlocked)
+        let late = tvOnlyHarness(); defer { late.cleanup() }
+        late.clock.now = asr.addingTimeInterval(31 * 60)
+        late.gate.reevaluate(.wake)
+        #expect(late.tv.calls.isEmpty && late.shield.shows.isEmpty && late.audio.plays.isEmpty && !late.gate.isBlocked)
+    }
+
+    @Test func tvOnlyStillHonoursThePauseRule() {
+        let h = tvOnlyHarness(paused: true); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.tv.calls.isEmpty && h.shield.shows.isEmpty && !h.gate.isBlocked)
+    }
+
+    @Test func tvOnlyWithNoTVsStillNeverShieldsOrSounds() {
+        let h = tvOnlyHarness(tvs: []); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.shield.shows.isEmpty && h.audio.plays.isEmpty && h.hider.startCount == 0 && !h.gate.isBlocked)
+    }
+
+    @Test func switchingBackToWholeScreenBlocksTheNextAthanAsBefore() {
+        let h = tvOnlyHarness(); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        h.settings.mode = .wholeScreen
+        let isha = FakeSchedule.at(.isha)
+        h.clock.now = isha
+        h.gate.athanFired(.isha, at: isha)
+        #expect(h.gate.isBlocked && h.shield.shows.count >= 1 && h.audio.plays.count == 1)
+        #expect(h.tv.calls.count == 2)
+    }
+
+    @Test func aBlockOnDiskWhenTheModeIsTvOnlyEndsQuietlyAtRelaunch() {
+        var s = Settings.test(); s.tvs = [lounge]
+        let h = Harness(at: asr.addingTimeInterval(-60), settings: s); defer { h.cleanup() }
+        h.clock.now = asr
+        h.gate.athanFired(.asr, at: asr)
+        #expect(h.gate.isBlocked)
+        h.clock.now = asr.addingTimeInterval(30)
+        h.settings.mode = .tvOnly
+        h.relaunch()
+        #expect(!h.gate.isBlocked)
+        #expect(h.shield.shows.isEmpty && h.audio.plays.isEmpty && h.tv.calls.isEmpty)
+    }
+
+    @Test func tvOnlyAndGoogleTVSettingsRoundTripWithTheSharedRawValues() throws {
+        #expect(TVKind.googleTV.rawValue == "googleTV" && BlockMode.tvOnly.rawValue == "tvOnly")
+        var s = Settings.test(); s.mode = .tvOnly
+        s.tvs = [TVDevice(id: "c", name: "Family Room TV", kind: .googleTV, host: "10.0.0.100", remotePaired: true)]
+        let back = try JSONDecoder().decode(Settings.self, from: JSONEncoder().encode(s))
+        #expect(back == s && back.tvs[0].channelId == "CC1AD845" && back.tvs[0].remotePaired)
+        let old = try JSONDecoder().decode(TVDevice.self, from: Data(#"{"id":"x","host":"10.0.0.5","kind":"googleTV"}"#.utf8))
+        #expect(!old.remotePaired && old.channelId == "CC1AD845" && old.installed)
+        #expect(TVDevice.isValidChannelId("CC1AD845", kind: .googleTV))
+        #expect(!TVDevice.isValidChannelId("dev", kind: .googleTV) && !TVDevice.isValidChannelId("CC1AD845", kind: .roku))
     }
 
     @Test func liveAthanAlwaysCallsEvenIfTheScheduleTickIsLate() {
@@ -515,7 +624,7 @@ private func appsXML(_ apps: (String, String)...) -> String {
     }
 
     @Test func pausedMeansNoTVCall() {
-        var s = Settings.test(pausedUntil: .distantFuture); s.tvs = [lounge]
+        var s = Settings.test(pausedUntil: .distantFuture); s.tvs = [lounge, den]
         let h = Harness(at: asr.addingTimeInterval(-60), settings: s); defer { h.cleanup() }
         h.clock.now = asr
         h.gate.athanFired(.asr, at: asr)
@@ -625,6 +734,18 @@ final class RecordingSender: TVSending, @unchecked Sendable {
     var fail = false
     var failWith: TVError?
     var resolution: TVResolution = .found("dev")
+    var pairResult: TVPairResult = .notNeeded
+    var pairError: TVError?
+    var paired = false
+    private(set) var pairs = 0
+    private(set) var forgotten: [String] = []
+    func pair(_ tv: TVDevice) async throws -> TVPairResult {
+        pairs += 1
+        if let pairError { throw pairError }
+        return pairResult
+    }
+    func forget(_ tv: TVDevice) { forgotten.append(tv.id) }
+    func isPaired(_ tv: TVDevice) -> Bool { paired }
     func athanStarted(prayer: Prayer, voice: Voice, tvs: [TVDevice]) {}
     func resolve(_ tv: TVDevice) async -> TVResolution { resolution }
     func test(_ tv: TVDevice, prayer: Prayer, voice: Voice) async throws {

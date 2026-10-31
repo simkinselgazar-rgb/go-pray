@@ -19,7 +19,36 @@ private let log = Logger(subsystem: "com.ahmedelgazar.gopray", category: "tv")
 
 // MARK: - Seams
 
-enum TVError: Error, Equatable { case refusedHost, badURL, badStatus(Int), unreachable, localNetworkDenied }
+enum TVError: Error, Equatable {
+    case refusedHost, badURL, badStatus(Int), unreachable, localNetworkDenied
+    /// Samsung only: the TV's certificate is not the one we pinned when it was paired. The person pairs again.
+    case certChanged
+    /// Samsung only: the TV reports standby. The Athan skips it silently; the Test button says so.
+    case standby
+}
+
+/// The one way a TV error is written to the log. A URLError's own description carries the failing URL, and for a
+/// paired Samsung that URL holds the token, so only a fixed name or a code ever leaves here: never a URL, userInfo or message.
+enum TVLog {
+    static func describe(_ error: Error) -> String {
+        if let e = error as? TVError {
+            switch e {
+            case .refusedHost: return "refusedHost"
+            case .badURL: return "badURL"
+            case .badStatus(let c): return "badStatus(\(c))"
+            case .unreachable: return "unreachable"
+            case .localNetworkDenied: return "localNetworkDenied"
+            case .certChanged: return "certChanged"
+            case .standby: return "standby"
+            }
+        }
+        if let e = error as? URLError { return "URLError(\(e.code.rawValue))" }
+        return String(describing: type(of: error))
+    }
+}
+
+/// How a Pair attempt ended (Samsung; a Roku needs none).
+enum TVPairResult: Equatable, Sendable { case paired, denied, unsupported, notNeeded }
 
 /// macOS Local Network privacy refuses the app until the person allows it. It shows up as -1009 whose underlying
 /// network path says "Local network prohibited" (checked live on macOS 26), or as errno 65 on a raw socket.
@@ -35,6 +64,18 @@ protocol TVControlling: Sendable {
     func findChannel(_ tv: TVDevice) async throws -> String?
     /// `test` = the Settings Test button: adds `&test=1` so the channel knows it is not an Athan. Athans never send it.
     func launch(_ tv: TVDevice, prayer: Prayer, voice: Voice, test: Bool) async throws
+    /// Settings only, never the Athan path. A make with no pairing answers `.notNeeded`.
+    func pair(_ tv: TVDevice) async throws -> TVPairResult
+    /// The TV was removed from the list: drop anything stored for it.
+    func forget(_ tv: TVDevice)
+    /// Whether a credential is stored for this TV.
+    func isPaired(_ tv: TVDevice) -> Bool
+}
+
+extension TVControlling {
+    func pair(_ tv: TVDevice) async throws -> TVPairResult { .notNeeded }
+    func forget(_ tv: TVDevice) {}
+    func isPaired(_ tv: TVDevice) -> Bool { false }
 }
 
 /// What the gate and the Settings Test button talk to.
@@ -44,12 +85,26 @@ enum TVResolution: Equatable, Sendable { case found(String), notInstalled, unrea
 struct TVScan: Equatable, Sendable { var found: [FoundTV] = []; var denied = false }
 
 protocol TVSending: Sendable {
+    /// Every saved settings change (and once at launch). Background work only, never waits: Google TV warms its videos here.
+    func settingsChanged(_ settings: Settings)
     /// Asks the TV which Go Pray app it has. Used when a TV is added and on the Test button, never on the Athan path.
     func resolve(_ tv: TVDevice) async -> TVResolution
     /// Fire and forget: every enabled TV, background, never throws, never waits. The gate calls this.
     func athanStarted(prayer: Prayer, voice: Voice, tvs: [TVDevice])
     /// The Test button: one TV (even if switched off), and the caller sees whether it worked.
     func test(_ tv: TVDevice, prayer: Prayer, voice: Voice) async throws
+    /// The Pair button (Settings). Never called at Athan time.
+    func pair(_ tv: TVDevice) async throws -> TVPairResult
+    /// A TV was removed from the list.
+    func forget(_ tv: TVDevice)
+    func isPaired(_ tv: TVDevice) -> Bool
+}
+
+extension TVSending {
+    func settingsChanged(_ settings: Settings) {}
+    func pair(_ tv: TVDevice) async throws -> TVPairResult { .notNeeded }
+    func forget(_ tv: TVDevice) {}
+    func isPaired(_ tv: TVDevice) -> Bool { false }
 }
 
 protocol TVDiscovering: Sendable {
@@ -60,6 +115,7 @@ struct NoTV: TVSending, TVDiscovering {
     func athanStarted(prayer: Prayer, voice: Voice, tvs: [TVDevice]) {}
     func resolve(_ tv: TVDevice) async -> TVResolution { .unreachable }
     func test(_ tv: TVDevice, prayer: Prayer, voice: Voice) async throws { throw TVError.unreachable }
+    func pair(_ tv: TVDevice) async throws -> TVPairResult { throw TVError.unreachable }
     func scan() async -> TVScan { TVScan() }
 }
 
@@ -231,10 +287,26 @@ private final class NoRedirects: NSObject, URLSessionTaskDelegate, @unchecked Se
 
 // MARK: - The controller
 
-struct TVController: TVSending {
+struct TVController: TVSending, TVRemotePairing {
     let drivers: [TVKind: any TVControlling]
+    /// Google TV's remote (the power-off). The same instance `CastTV` holds, so the pairing session Settings opens is
+    /// the one it finishes, and the flag it sets is the one the Athan path reads.
+    let remote: TVPowering?
+    let warmer: CastWarmer?
 
-    init(drivers: [TVKind: any TVControlling] = [.roku: RokuTV()]) { self.drivers = drivers }
+    init(drivers: [TVKind: any TVControlling], remote: TVPowering? = nil, warm: (@Sendable (Voice) async -> Void)? = nil) {
+        self.drivers = drivers; self.remote = remote; self.warmer = warm.map(CastWarmer.init)
+    }
+
+    /// Production: every make, one shared remote, and warm-up into CastVideo's cache.
+    init() {
+        let power = AndroidRemote(), video = CastVideo()
+        self.init(drivers: [.roku: RokuTV(), .samsung: SamsungTV(),
+                            .googleTV: CastTV(media: video, server: CastServer(), power: power)],
+                  remote: power, warm: { await video.warm(voice: $0) })
+    }
+
+    func settingsChanged(_ settings: Settings) { warmer?.note(settings) }
 
     func athanStarted(prayer: Prayer, voice: Voice, tvs: [TVDevice]) {
         for tv in tvs where tv.enabled {
@@ -242,7 +314,7 @@ struct TVController: TVSending {
             guard let driver = drivers[tv.kind] else { log.error("tv skipped: no driver"); continue }
             Task.detached(priority: .utility) {
                 do { try await driver.launch(tv, prayer: prayer, voice: voice, test: false) }
-                catch { log.error("tv launch failed: \(String(describing: error), privacy: .public)") }
+                catch { log.error("tv launch failed: \(TVLog.describe(error), privacy: .public)") }
             }
         }
     }
@@ -260,6 +332,84 @@ struct TVController: TVSending {
     func test(_ tv: TVDevice, prayer: Prayer, voice: Voice) async throws {
         guard let driver = drivers[tv.kind] else { throw TVError.badURL }
         try await driver.launch(tv, prayer: prayer, voice: voice, test: true)
+    }
+
+    func pair(_ tv: TVDevice) async throws -> TVPairResult {
+        guard let driver = drivers[tv.kind] else { throw TVError.badURL }
+        return try await driver.pair(tv)
+    }
+
+    func forget(_ tv: TVDevice) { drivers[tv.kind]?.forget(tv) }
+    func isPaired(_ tv: TVDevice) -> Bool { drivers[tv.kind]?.isPaired(tv) ?? false }
+
+    // MARK: Google TV remote pairing (Settings only, never the Athan path)
+    // The caller (`TVListModel.pairRemote`) saves `remotePaired = true` on `.paired`; nothing else sets it.
+
+    func startRemotePairing(_ tv: TVDevice) async throws -> Bool {
+        guard tv.kind == .googleTV, let remote else { throw TVError.badURL }
+        return try await remote.startPairing(tv)
+    }
+
+    func pairRemote(_ tv: TVDevice, code: String) async throws -> TVPairResult {
+        guard tv.kind == .googleTV, let remote else { throw TVError.badURL }
+        let r = try await remote.pair(tv, code: code)
+        log.notice("tv: remote pairing \(r == .paired ? "paired" : "not paired", privacy: .public)")
+        return r
+    }
+}
+
+/// Renders a Google TV's five videos ahead of time so the first Athan never renders live: when a Google TV is on in
+/// Settings and the voice (or the set of enabled Google TVs going from none to some) changes. One warm at a time, in
+/// order; a warm that is no longer the latest wish is skipped.
+final class CastWarmer: @unchecked Sendable {
+    private let warm: @Sendable (Voice) async -> Void
+    private let lock = NSLock()
+    private var last: Voice?
+    private var tail: Task<Void, Never>?
+
+    init(_ warm: @escaping @Sendable (Voice) async -> Void) { self.warm = warm }
+
+    /// The voice to warm for these settings: nil when no Google TV is switched on.
+    static func wanted(_ s: Settings) -> Voice? { s.tvs.contains { $0.kind == .googleTV && $0.enabled } ? s.voice : nil }
+
+    func note(_ s: Settings) {
+        let want = Self.wanted(s)
+        lock.withLock {
+            guard want != last else { return }
+            last = want
+            guard let voice = want else { return }
+            let before = tail, warm = warm
+            tail = Task.detached(priority: .utility) { [weak self] in
+                await before?.value
+                guard self?.isLatest(voice) == true else { return }
+                log.notice("tv: cast warm \(RokuTV.voiceToken(voice), privacy: .public)")
+                await warm(voice)
+                log.notice("tv: cast warm done")
+            }
+        }
+    }
+
+    private func isLatest(_ v: Voice) -> Bool { lock.withLock { last == v } }
+
+    /// Tests: wait for every warm asked for so far.
+    func settle() async { await lock.withLock { tail }?.value }
+}
+
+/// The scan: Rokus (SSDP) and Google TVs (Bonjour) at the same time, one list, one entry per address.
+struct AllTVDiscovery: TVDiscovering {
+    let parts: [any TVDiscovering]
+    init(_ parts: [any TVDiscovering] = [RokuDiscovery(), CastDiscovery()]) { self.parts = parts }
+
+    func scan() async -> TVScan {
+        let scans = await withTaskGroup(of: (Int, TVScan).self) { group in
+            for (i, p) in parts.enumerated() { group.addTask { (i, await p.scan()) } }
+            var out: [(Int, TVScan)] = []
+            for await s in group { out.append(s) }
+            return out.sorted { $0.0 < $1.0 }.map(\.1)
+        }
+        var seen = Set<String>(), found: [FoundTV] = []
+        for tv in scans.flatMap(\.found) where seen.insert(tv.host).inserted { found.append(tv) }
+        return TVScan(found: found, denied: scans.contains { $0.denied })
     }
 }
 

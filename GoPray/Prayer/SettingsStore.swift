@@ -83,6 +83,16 @@ import os
 
     // MARK: Disk
 
+    /// Read-only look at settings.json for processes that must never write it (the iPhone widget; security review S6).
+    /// Nil when the file is missing, unreadable or invalid. Never moves, rewrites or creates anything.
+    nonisolated static func peek(directory: URL) -> Settings? {
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent("settings.json")) else { return nil }
+        let d = JSONDecoder()
+        d.dateDecodingStrategy = .iso8601
+        guard let s = try? d.decode(Settings.self, from: data).sanitized(), (try? s.validate()) != nil else { return nil }
+        return s
+    }
+
     private func load() -> Settings {
         guard let data = try? Data(contentsOf: fileURL) else { return .defaults }   // first run
         do {

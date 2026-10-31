@@ -3,7 +3,8 @@
 //
 // Called only from a user action in the city search field (typing, after a short
 // pause). Never at launch, never in the background, no Location permission: it sends
-// the typed text to Apple's geocoder and nothing else.
+// the typed text to Apple's geocoder and nothing else. `reverse` is the iPhone's opt-in
+// "Follow my location" lookup: it sends one rounded point, after the person turned that on.
 
 import CoreLocation
 import Foundation
@@ -49,6 +50,24 @@ enum GeocodeFailure: Error, Equatable {
         } catch let error as CLError {
             switch error.code {
             case .geocodeFoundNoResult: return []
+            case .geocodeCanceled: throw CancellationError()
+            case .network: throw GeocodeFailure.offline
+            default: throw GeocodeFailure.other
+            }
+        }
+    }
+
+    /// Used only by the iPhone's "Follow my location", after the person turned it on: sends the (already rounded)
+    /// point to Apple's geocoder and nothing else. The result keeps the asked-for point, not the placemark's centre.
+    func reverse(latitude: Double, longitude: Double) async throws -> CityMatch {
+        geocoder.cancelGeocode()
+        do {
+            let marks = try await geocoder.reverseGeocodeLocation(CLLocation(latitude: latitude, longitude: longitude))
+            guard let m = Self.matches(from: marks).first else { throw GeocodeFailure.other }
+            return CityMatch(name: m.name, region: m.region, country: m.country, countryCode: m.countryCode,
+                             latitude: latitude, longitude: longitude)
+        } catch let error as CLError {
+            switch error.code {
             case .geocodeCanceled: throw CancellationError()
             case .network: throw GeocodeFailure.offline
             default: throw GeocodeFailure.other

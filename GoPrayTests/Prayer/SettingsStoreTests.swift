@@ -241,4 +241,47 @@ struct SettingsStoreTests {
         #expect(CoordinateInput.parse("hello") == nil)
         #expect(CoordinateInput.parse("1,2,3") == nil)
     }
+
+    // MARK: settings written by a newer version
+
+    /// A valid settings object as a dictionary, with the keys the test wants to change.
+    private func fixture(_ edit: (inout [String: Any]) -> Void) throws -> Data {
+        var obj = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(Settings.test())) as? [String: Any])
+        edit(&obj)
+        return try JSONSerialization.data(withJSONObject: obj)
+    }
+
+    @Test func anUnknownModeAndAnUnknownTVKindDoNotMakeTheFileCorrupt() throws {
+        let dir = tempDir(); defer { try? FileManager.default.removeItem(at: dir) }
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let data = try fixture { o in
+            o["mode"] = "somethingNew"
+            o["tvs"] = [
+                ["id": "a", "host": "192.168.1.20", "kind": "laterTV", "name": "Future"],
+                ["id": "b", "host": "192.168.1.21", "kind": "roku", "name": "Den"],
+            ]
+        }
+        try data.write(to: dir.appendingPathComponent("settings.json"))
+        let store = SettingsStore(directory: dir)
+        #expect(!store.loadedFromCorruptFile)
+        #expect(store.settings.mode == .wholeScreen)
+        #expect(store.settings.tvs.count == 1)
+        #expect(store.settings.tvs.first?.kind == .roku)
+        #expect(store.settings.tvs.first?.id == "b")
+        #expect(store.settings.city == Settings.test().city, "the rest of the file survived")
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        #expect(!names.contains { $0.hasPrefix("settings.corrupt-") }, "\(names)")
+    }
+
+    @Test func aGoogleTVAndTVOnlyModeSurviveARoundTrip() throws {
+        var s = Settings.test()
+        s.mode = .tvOnly
+        s.tvs = [TVDevice(id: "g", name: "Living room", kind: .googleTV, host: "192.168.1.30", remotePaired: true)]
+        let d = JSONEncoder(), back = try JSONDecoder().decode(Settings.self, from: d.encode(s))
+        #expect(back.mode == .tvOnly)
+        #expect(back.tvs == s.tvs)
+        #expect(back.tvs.first?.kind == .googleTV)
+        let json = String(decoding: try d.encode(s), as: UTF8.self)
+        #expect(json.contains("\"tvOnly\"") && json.contains("\"googleTV\""))
+    }
 }

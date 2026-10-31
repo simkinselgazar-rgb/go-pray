@@ -11,7 +11,18 @@ import Foundation
 /// Inside this module `Prayer` means this enum; write `Adhan.Prayer` for theirs.
 enum Prayer: String, Codable, CaseIterable, Sendable { case fajr, dhuhr, asr, maghrib, isha }
 
-enum BlockMode: String, Codable, Sendable { case wholeScreen, codingApps }
+/// `tvOnly` (Google TV Plan §5): the computer never locks and stays silent; the TVs you added play the Athan.
+/// The raw value is shared with settings.json on Windows: do not rename.
+enum BlockMode: String, Codable, Sendable {
+    case wholeScreen, codingApps, tvOnly
+
+    /// A settings.json from a newer version may carry a mode this build does not know: read it as the safe default
+    /// instead of failing the whole file (which would set it aside and reset everything).
+    init(from decoder: Decoder) throws {
+        let raw = try decoder.singleValueContainer().decode(String.self)
+        self = BlockMode(rawValue: raw) ?? .wholeScreen
+    }
+}
 
 struct DayTimes: Sendable { let fajr, sunrise, dhuhr, asr, maghrib, isha: Date }
 

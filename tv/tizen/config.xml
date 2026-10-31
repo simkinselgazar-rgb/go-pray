@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets"
+        id="http://gopray.app/tv" version="1.0.0" viewmodes="maximized">
+  <tizen:application id="GoPrayAth1.GoPray" package="GoPrayAth1" required_version="2.3"/>
+  <content src="index.html"/>
+  <icon src="icon.png"/>
+  <name>Go Pray: Athan</name>
+  <tizen:profile name="tv-samsung"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable"
+                 encryption="disable" install-location="auto" hwkey-event="enable"/>
+</widget>

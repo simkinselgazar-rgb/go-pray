@@ -52,8 +52,8 @@ extension Settings {
         for var tv in tvs {
             tv.host = tv.host.trimmingCharacters(in: .whitespacesAndNewlines)
             tv.name = String(tv.name.trimmingCharacters(in: .whitespacesAndNewlines).prefix(TVDevice.maxNameLength))
-            if tv.name.isEmpty { tv.name = "Roku TV" }
-            if !TVDevice.isValidChannelId(tv.channelId) { tv.channelId = TVDevice.defaultChannelId }
+            if tv.name.isEmpty { tv.name = tv.kind.defaultName }
+            if !TVDevice.isValidChannelId(tv.channelId, kind: tv.kind) { tv.channelId = TVDevice.defaultChannelId(for: tv.kind) }
             guard TVHost.isAllowed(tv.host), !tv.id.isEmpty, ids.insert(tv.id).inserted, hosts.insert(tv.host).inserted else { continue }
             out.append(tv)
         }
@@ -229,6 +229,7 @@ extension BlockMode {
         switch self {
         case .wholeScreen: return "Whole screen"
         case .codingApps: return "Coding apps only"
+        case .tvOnly: return "TV only"
         }
     }
 
@@ -237,6 +238,7 @@ extension BlockMode {
         switch self {
         case .wholeScreen: return "Whole screen"
         case .codingApps: return "Coding apps"
+        case .tvOnly: return "TV only"
         }
     }
 
@@ -244,6 +246,7 @@ extension BlockMode {
         switch self {
         case .wholeScreen: return "A calm screen covers everything until you pray."
         case .codingApps: return "Only your coding apps rest. Your agents keep running."
+        case .tvOnly: return "The computer never locks and stays silent. The TVs you added play the Athan."
         }
     }
 }

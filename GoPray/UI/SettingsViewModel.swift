@@ -205,20 +205,31 @@ import Observation
     static let notInstalledLine = TVListModel.notInstalledLine
     static let allowLocalNetworkLine = TVListModel.allowLocalNetworkLine
     static let testFailedLine = TVListModel.testFailedLine
+    typealias TokenState = TVListModel.TokenState
+    static let basicLaunchLine = TVListModel.basicLaunchLine
+    static let pairAgainLine = TVListModel.pairAgainLine
 
     var scanState: ScanState { tvModel.scanState }
     var foundTVs: [FoundTV] { tvModel.foundTVs }
     var tvTestLines: [String: String] { tvModel.tvTestLines }
     var testingTV: String? { tvModel.testingTV }
+    var pairingTV: String? { tvModel.pairingTV }
+    func tokenState(of id: String) -> TokenState { tvModel.tokenState(of: id) }
+    func loadTokenState(_ id: String) { tvModel.loadTokenState(id) }
+    func pairTV(_ id: String) async { await tvModel.pairTV(id) }
+    var remotePairingTV: String? { tvModel.remotePairingTV }
+    func remoteHelp(for tv: TVDevice) -> String { tvModel.remoteHelp(for: tv) }
+    func startRemotePairing(_ id: String) async -> Bool { await tvModel.startRemotePairing(id) }
+    func pairRemote(_ id: String, code: String) async -> TVListModel.RemotePairOutcome { await tvModel.pairRemote(id, code: code) }
     var tvsNeedingNetworkAccess: Set<String> { tvModel.tvsNeedingNetworkAccess }
     var scanNeedsNetworkAccess: Bool { tvModel.scanNeedsNetworkAccess }
     var tvs: [TVDevice] { settings.tvs }
 
     func scanForTVs() async { await tvModel.scanForTVs() }
-    @discardableResult func addTV(host: String, name: String) -> Bool { tvModel.addTV(host: host, name: name) }
-    func addTVAndCheck(host: String, name: String) async -> Bool { await tvModel.addTVAndCheck(host: host, name: name) }
+    @discardableResult func addTV(host: String, name: String, kind: TVKind = .roku) -> Bool { tvModel.addTV(host: host, name: name, kind: kind) }
+    func addTVAndCheck(host: String, name: String, kind: TVKind = .roku) async -> Bool { await tvModel.addTVAndCheck(host: host, name: name, kind: kind) }
     func addFound(_ found: FoundTV) async { await tvModel.addFound(found) }
-    func addTyped(_ address: String) async -> Bool { await tvModel.addTyped(address) }
+    func addTyped(_ address: String, kind: TVKind = .roku) async -> Bool { await tvModel.addTyped(address, kind: kind) }
     @discardableResult func refreshTV(_ id: String) async -> TVResolution? { await tvModel.refreshTV(id) }
     func removeTV(_ id: String) { tvModel.removeTV(id) }
     func setTV(_ id: String, enabled: Bool) { tvModel.setTV(id, enabled: enabled) }

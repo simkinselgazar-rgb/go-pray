@@ -8,10 +8,11 @@ struct SetupTVStep: View {
     var model: TVListModel
     @State private var address = ""
     @State private var addingByAddress = false
+    @State private var kind: TVKind = .roku
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.s12) {
-            Text("If you have a Roku TV, Go Pray can play the Athan on it at each prayer. Your TV needs the free Go Pray Roku app.")
+            Text("If you have a Roku, Samsung or Google TV, Go Pray can play the Athan on it at each prayer. Roku and Samsung need the free Go Pray app.")
                 .font(.body).fixedSize(horizontal: false, vertical: true)
 
             ScrollView {
@@ -23,7 +24,7 @@ struct SetupTVStep: View {
                         Text(TVListModel.allowLocalNetworkLine).font(.callout).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     } else if model.scanState == .done, model.foundTVs.isEmpty, model.tvs.isEmpty {
-                        Text("No Roku TVs found. Is the TV on, and on the same Wi-Fi? You can also add it by its address.")
+                        Text("No TVs found. Is the TV on, and on the same Wi-Fi? You can also add it by its address.")
                             .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                     }
                 }
@@ -35,8 +36,12 @@ struct SetupTVStep: View {
                     .disabled(model.scanState == .scanning)
                 Spacer()
                 if addingByAddress {
-                    TextField("192.168.1.20", text: $address)
-                        .textFieldStyle(.roundedBorder).frame(width: 140).disableAutocorrection(true)
+                    Picker("TV type", selection: $kind) {
+                        ForEach(TVKind.allCases, id: \.self) { Text($0.label).tag($0) }
+                    }
+                    .labelsHidden().pickerStyle(.menu).fixedSize()
+                    TextField("TV address", text: $address, prompt: Text("192.168.1.20"))
+                        .labelsHidden().textFieldStyle(.roundedBorder).frame(width: 140).disableAutocorrection(true)
                         .onSubmit { addTyped() }
                     Button("Add") { addTyped() }.disabled(address.trimmingCharacters(in: .whitespaces).isEmpty)
                 } else {
@@ -49,8 +54,8 @@ struct SetupTVStep: View {
     }
 
     private func addTyped() {
-        let a = address
-        Task { if await model.addTyped(a) { address = ""; addingByAddress = false } }
+        let a = address, k = kind
+        Task { if await model.addTyped(a, kind: k) { address = ""; addingByAddress = false } }
     }
 
     // MARK: Rows (same height as the skeleton, so nothing jumps when results arrive)
@@ -116,7 +121,7 @@ struct SetupTVStep: View {
             case .ready:
                 Label("Ready", systemImage: "checkmark.circle").font(.callout).foregroundStyle(.secondary)
             case .notInstalled:
-                Text(TVListModel.notInstalledSetupLine).font(.callout).foregroundStyle(.secondary)
+                Text(tv.kind == .samsung ? TVListModel.notInstalledLine : TVListModel.notInstalledSetupLine).font(.callout).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             case .needsNetworkAccess:
                 Text(TVListModel.allowLocalNetworkLine).font(.callout).foregroundStyle(.secondary)
